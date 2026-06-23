@@ -11,6 +11,6 @@
   <ItemGroup>
     <ProjectReference Include="..${svc}.Domain${svc}.Domain.csproj" />
     <ProjectReference Include="..${svc}.Infrastructure${svc}.Infrastructure.csproj" />
-    <ProjectReference Include="C:SERSENWDESKTOPDEMOCODEDEMONETNETCAFEMANAGEMENT\SHAREDKERNEL\SHAREDKERNEL.CSPROJ" />
+    <ProjectReference Include="C:\Users\ckenw\Desktop\DemoCode\demoNet\NetCafeManagement\SharedKernel\SharedKernel.csproj" />
   </ItemGroup>
 </Project>
