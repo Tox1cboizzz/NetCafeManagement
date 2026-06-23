@@ -14,6 +14,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AuthService.Domain\AuthService.Domain.csproj" />
-    <ProjectReference Include="..\..\..\..\SharedKernel\SharedKernel.csproj" />
+    <ProjectReference Include="C:SERSENWDESKTOPDEMOCODEDEMONETNETCAFEMANAGEMENT\SHAREDKERNEL\SHAREDKERNEL.CSPROJ" />
   </ItemGroup>
 </Project>
