@@ -9,6 +9,9 @@ public class RefreshToken : BaseEntity
     public DateTime ExpiresAt { get; private set; }
     public bool IsRevoked { get; private set; }
 
+    // Navigation property
+    public User User { get; private set; } = null!;
+
     private RefreshToken() { }
 
     public static RefreshToken Create(Guid userId, string token, DateTime expiresAt)
