@@ -9,8 +9,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../Domain/WalletService.Domain.csproj" />
-    <ProjectReference Include="../Infrastructure/WalletService.Infrastructure.csproj" />
-    <ProjectReference Include="../../SharedKernel/SharedKernel.csproj" />
+    <ProjectReference Include="..\Domain\WalletService.Domain.csproj" />
+    <ProjectReference Include="..\Infrastructure\WalletService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\SharedKernel\SharedKernel.csproj" />
   </ItemGroup>
 </Project>

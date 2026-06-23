@@ -9,8 +9,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="../Domain/ReportService.Domain.csproj" />
-    <ProjectReference Include="../Infrastructure/ReportService.Infrastructure.csproj" />
-    <ProjectReference Include="../../SharedKernel/SharedKernel.csproj" />
+    <ProjectReference Include="..\Domain\ReportService.Domain.csproj" />
+    <ProjectReference Include="..\Infrastructure\ReportService.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\SharedKernel\SharedKernel.csproj" />
   </ItemGroup>
 </Project>
