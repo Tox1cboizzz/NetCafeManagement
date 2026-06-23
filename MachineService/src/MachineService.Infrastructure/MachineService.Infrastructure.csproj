@@ -7,9 +7,13 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0" />
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..${svc}.Domain${svc}.Domain.csproj" />
-    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.csproj" />
+    <ProjectReference Include="..\MachineService.Domain\MachineService.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\SharedKernel\SharedKernel.csproj" />
   </ItemGroup>
 </Project>

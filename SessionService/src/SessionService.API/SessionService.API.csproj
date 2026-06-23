@@ -12,9 +12,10 @@
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.0" />
+    
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..${svc}.Application${svc}.Application.csproj" />
-    <ProjectReference Include="..${svc}.Infrastructure${svc}.Infrastructure.csproj" />
+    <ProjectReference Include="..\SessionService.Application\SessionService.Application.csproj" />
+    <ProjectReference Include="..\SessionService.Infrastructure\SessionService.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
