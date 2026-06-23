@@ -10,6 +10,6 @@
   <ItemGroup>
     <ProjectReference Include="..${svc}.Domain${svc}.Domain.csproj" />
     <ProjectReference Include="..${svc}.Infrastructure${svc}.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\..\SharedKernel\SharedKernel.csproj" />
+    <ProjectReference Include="..\..\..\SharedKernel\SharedKernel.csproj" />
   </ItemGroup>
 </Project>
