@@ -25,9 +25,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 builder.Services.AddAuthorization();
+builder.Services.AddCors(o => o.AddDefaultPolicy(p => p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 var app = builder.Build();
 app.UseSwagger(); app.UseSwaggerUI();
 app.UseAuthentication(); app.UseAuthorization();
+app.UseCors();
 app.MapControllers();
 using (var scope = app.Services.CreateScope()) { var db = scope.ServiceProvider.GetRequiredService<MachineDbContext>(); db.Database.Migrate(); }
 app.Run();

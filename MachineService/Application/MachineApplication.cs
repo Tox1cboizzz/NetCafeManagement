@@ -8,7 +8,6 @@ namespace MachineService.Application.DTOs
 {
     public record MachineDto(Guid Id, string Name, string Type, decimal PricePerHour, string Status, Guid? CurrentUserId, string? Specs);
     public record CreateMachineRequest(string Name, string Type, decimal PricePerHour, string? Specs);
-    public record UpdateMachineRequest(string Name, decimal PricePerHour, string? Specs);
     public record OccupyMachineRequest(Guid UserId);
 }
 
@@ -32,11 +31,10 @@ namespace MachineService.Application.Commands
     {
         private readonly MachineDbContext _context;
         public CreateMachineCommandHandler(MachineDbContext ctx) => _context = ctx;
-
         public async Task<Result<MachineDto>> Handle(CreateMachineCommand req, CancellationToken ct)
         {
             if (!Enum.TryParse<MachineType>(req.Type, true, out var type))
-                return Result<MachineDto>.Failure("Invalid machine type. Use Normal or Premium");
+                return Result<MachineDto>.Failure("Invalid type. Use Normal or Premium");
             var machine = Machine.Create(req.Name, type, req.PricePerHour, req.Specs);
             _context.Machines.Add(machine);
             await _context.SaveChangesAsync(ct);
@@ -48,12 +46,11 @@ namespace MachineService.Application.Commands
     {
         private readonly MachineDbContext _context;
         public OccupyMachineCommandHandler(MachineDbContext ctx) => _context = ctx;
-
         public async Task<Result<MachineDto>> Handle(OccupyMachineCommand req, CancellationToken ct)
         {
             var machine = await _context.Machines.FindAsync(req.MachineId);
             if (machine == null) return Result<MachineDto>.Failure("Machine not found");
-            if (machine.Status != MachineStatus.Available) return Result<MachineDto>.Failure("Machine is not available");
+            if (machine.Status != MachineStatus.Available) return Result<MachineDto>.Failure("Machine not available");
             machine.Occupy(req.UserId);
             await _context.SaveChangesAsync(ct);
             return Result<MachineDto>.Success(MachineMapper.ToDto(machine));
@@ -64,7 +61,6 @@ namespace MachineService.Application.Commands
     {
         private readonly MachineDbContext _context;
         public ReleaseMachineCommandHandler(MachineDbContext ctx) => _context = ctx;
-
         public async Task<Result<MachineDto>> Handle(ReleaseMachineCommand req, CancellationToken ct)
         {
             var machine = await _context.Machines.FindAsync(req.MachineId);
@@ -79,7 +75,6 @@ namespace MachineService.Application.Commands
     {
         private readonly MachineDbContext _context;
         public GetAllMachinesQueryHandler(MachineDbContext ctx) => _context = ctx;
-
         public async Task<Result<List<MachineDto>>> Handle(GetAllMachinesQuery req, CancellationToken ct)
         {
             var machines = await _context.Machines.Where(m => !m.IsDeleted).ToListAsync(ct);
@@ -91,13 +86,10 @@ namespace MachineService.Application.Commands
     {
         private readonly MachineDbContext _context;
         public GetMachineByIdQueryHandler(MachineDbContext ctx) => _context = ctx;
-
         public async Task<Result<MachineDto>> Handle(GetMachineByIdQuery req, CancellationToken ct)
         {
             var machine = await _context.Machines.FindAsync(req.Id);
-            return machine == null
-                ? Result<MachineDto>.Failure("Not found")
-                : Result<MachineDto>.Success(MachineMapper.ToDto(machine));
+            return machine == null ? Result<MachineDto>.Failure("Not found") : Result<MachineDto>.Success(MachineMapper.ToDto(machine));
         }
     }
 }

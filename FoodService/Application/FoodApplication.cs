@@ -25,7 +25,6 @@ namespace FoodService.Application.Commands
     {
         private readonly FoodDbContext _context;
         public CreateMenuItemCommandHandler(FoodDbContext ctx) => _context = ctx;
-
         public async Task<Result<MenuItemDto>> Handle(CreateMenuItemCommand req, CancellationToken ct)
         {
             if (!Enum.TryParse<FoodCategory>(req.Category, true, out var cat))
@@ -41,7 +40,6 @@ namespace FoodService.Application.Commands
     {
         private readonly FoodDbContext _context;
         public CreateOrderCommandHandler(FoodDbContext ctx) => _context = ctx;
-
         public async Task<Result<OrderDto>> Handle(CreateOrderCommand req, CancellationToken ct)
         {
             var item = await _context.MenuItems.FindAsync(req.ItemId);
@@ -57,11 +55,9 @@ namespace FoodService.Application.Commands
     {
         private readonly FoodDbContext _context;
         public GetMenuQueryHandler(FoodDbContext ctx) => _context = ctx;
-
         public async Task<Result<List<MenuItemDto>>> Handle(GetMenuQuery req, CancellationToken ct)
         {
-            var items = await _context.MenuItems
-                .Where(i => !i.IsDeleted)
+            var items = await _context.MenuItems.Where(i => !i.IsDeleted)
                 .Select(i => new MenuItemDto(i.Id, i.Name, i.Category.ToString(), i.Price, i.IsAvailable))
                 .ToListAsync(ct);
             return Result<List<MenuItemDto>>.Success(items);
@@ -72,11 +68,9 @@ namespace FoodService.Application.Commands
     {
         private readonly FoodDbContext _context;
         public GetOrdersBySessionQueryHandler(FoodDbContext ctx) => _context = ctx;
-
         public async Task<Result<List<OrderDto>>> Handle(GetOrdersBySessionQuery req, CancellationToken ct)
         {
-            var orders = await _context.Orders
-                .Where(o => o.SessionId == req.SessionId)
+            var orders = await _context.Orders.Where(o => o.SessionId == req.SessionId)
                 .Join(_context.MenuItems, o => o.ItemId, m => m.Id,
                     (o, m) => new OrderDto(o.Id, o.SessionId, o.ItemId, m.Name, o.Quantity, o.UnitPrice, o.TotalPrice))
                 .ToListAsync(ct);
