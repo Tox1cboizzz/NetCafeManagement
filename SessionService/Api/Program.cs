@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SessionService.Application.Commands;
+using SessionService.Infrastructure.BackgroundJobs;
 using SessionService.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,7 +38,7 @@ builder.Services.AddHttpClient("MachineService", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:MachineService"] ?? "http://localhost:5003");
 });
-builder.Services.AddHostedService<SessionService.Infrastructure.BackgroundJobs.SessionBillingBackgroundService>();
+builder.Services.AddHostedService<SessionBillingBackgroundService>();
 var app = builder.Build();
 app.UseSwagger(); app.UseSwaggerUI();
 app.UseAuthentication(); app.UseAuthorization();
