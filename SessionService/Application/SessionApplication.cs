@@ -45,13 +45,46 @@ namespace SessionService.Application.Commands
     public class CloseSessionCommandHandler : IRequestHandler<CloseSessionCommand, Result<InvoiceDto>>
     {
         private readonly SessionDbContext _context;
-        public CloseSessionCommandHandler(SessionDbContext ctx) => _context = ctx;
+        private readonly IHttpClientFactory _httpClientFactory;
+
+        public CloseSessionCommandHandler(SessionDbContext ctx, IHttpClientFactory httpClientFactory)
+        {
+            _context = ctx;
+            _httpClientFactory = httpClientFactory;
+        }
+
         public async Task<Result<InvoiceDto>> Handle(CloseSessionCommand req, CancellationToken ct)
         {
             var session = await _context.Sessions.FindAsync(req.SessionId);
             if (session == null) return Result<InvoiceDto>.Failure("Session not found");
             if (session.Status == SessionStatus.Closed) return Result<InvoiceDto>.Failure("Already closed");
+
             session.Close();
+            var totalCost = session.TotalCost + req.FoodCost;
+
+            // Gọi WalletService trừ tiền
+            try
+            {
+                var client = _httpClientFactory.CreateClient("WalletService");
+                var deductBody = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    userId = session.UserId,
+                    amount = totalCost,
+                    note = $"Phiên chơi {session.Id} - {DateTime.UtcNow:dd/MM/yyyy HH:mm}"
+                });
+                var content = new StringContent(deductBody, System.Text.Encoding.UTF8, "application/json");
+                var response = await client.PostAsync("/api/wallet/deduct", content);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var err = await response.Content.ReadAsStringAsync();
+                    return Result<InvoiceDto>.Failure($"Không thể trừ tiền: {err}");
+                }
+            }
+            catch (Exception ex)
+            {
+                return Result<InvoiceDto>.Failure($"Lỗi kết nối WalletService: {ex.Message}");
+            }
+
             var invoice = Invoice.Create(session.Id, session.TotalCost, req.FoodCost);
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync(ct);
