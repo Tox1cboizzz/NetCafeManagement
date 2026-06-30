@@ -33,6 +33,11 @@ builder.Services.AddHttpClient("WalletService", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["Services:WalletService"] ?? "http://localhost:5002");
 });
+builder.Services.AddHttpClient("MachineService", client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["Services:MachineService"] ?? "http://localhost:5003");
+});
+builder.Services.AddHostedService<SessionService.Infrastructure.BackgroundJobs.SessionBillingBackgroundService>();
 var app = builder.Build();
 app.UseSwagger(); app.UseSwaggerUI();
 app.UseAuthentication(); app.UseAuthorization();

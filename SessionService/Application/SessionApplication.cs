@@ -42,16 +42,16 @@ namespace SessionService.Application.Commands
         }
     }
 
+    /// <summary>
+    /// Đóng phiên thủ công (khách yêu cầu nghỉ giữa chừng).
+    /// KHÔNG gọi WalletService deduct nữa vì background job
+    /// SessionBillingBackgroundService đã trừ tiền theo từng giây rồi.
+    /// TotalCost ở đây là tổng đã trừ thực tế (PlayCost), cộng thêm FoodCost của đơn hàng ăn uống.
+    /// </summary>
     public class CloseSessionCommandHandler : IRequestHandler<CloseSessionCommand, Result<InvoiceDto>>
     {
         private readonly SessionDbContext _context;
-        private readonly IHttpClientFactory _httpClientFactory;
-
-        public CloseSessionCommandHandler(SessionDbContext ctx, IHttpClientFactory httpClientFactory)
-        {
-            _context = ctx;
-            _httpClientFactory = httpClientFactory;
-        }
+        public CloseSessionCommandHandler(SessionDbContext ctx) => _context = ctx;
 
         public async Task<Result<InvoiceDto>> Handle(CloseSessionCommand req, CancellationToken ct)
         {
@@ -60,34 +60,12 @@ namespace SessionService.Application.Commands
             if (session.Status == SessionStatus.Closed) return Result<InvoiceDto>.Failure("Already closed");
 
             session.Close();
-            var totalCost = session.TotalCost + req.FoodCost;
 
-            // Gọi WalletService trừ tiền
-            try
-            {
-                var client = _httpClientFactory.CreateClient("WalletService");
-                var deductBody = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    userId = session.UserId,
-                    amount = totalCost,
-                    note = $"Phiên chơi {session.Id} - {DateTime.UtcNow:dd/MM/yyyy HH:mm}"
-                });
-                var content = new StringContent(deductBody, System.Text.Encoding.UTF8, "application/json");
-                var response = await client.PostAsync("/api/wallet/deduct", content);
-                if (!response.IsSuccessStatusCode)
-                {
-                    var err = await response.Content.ReadAsStringAsync();
-                    return Result<InvoiceDto>.Failure($"Không thể trừ tiền: {err}");
-                }
-            }
-            catch (Exception ex)
-            {
-                return Result<InvoiceDto>.Failure($"Lỗi kết nối WalletService: {ex.Message}");
-            }
-
+            // PlayCost = TotalCost đã cộng dồn từ background job (đã trừ ví thực tế)
             var invoice = Invoice.Create(session.Id, session.TotalCost, req.FoodCost);
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync(ct);
+
             return Result<InvoiceDto>.Success(new InvoiceDto(invoice.Id, invoice.SessionId, invoice.PlayCost, invoice.FoodCost, invoice.TotalCost, invoice.CreatedAt));
         }
     }

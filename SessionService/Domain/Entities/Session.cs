@@ -16,14 +16,34 @@ public class Session : BaseEntity
     private Session() { }
 
     public static Session Create(Guid userId, Guid machineId, decimal pricePerHour, decimal discount)
-        => new() { UserId = userId, MachineId = machineId, StartTime = DateTime.UtcNow, PricePerHour = pricePerHour, Discount = discount, Status = SessionStatus.Active };
+        => new()
+        {
+            UserId = userId,
+            MachineId = machineId,
+            StartTime = DateTime.UtcNow,
+            PricePerHour = pricePerHour,
+            Discount = discount,
+            TotalCost = 0,
+            Status = SessionStatus.Active
+        };
 
+    /// <summary>
+    /// Cộng dồn tiền đã trừ thực tế (gọi mỗi giây từ background job).
+    /// TotalCost là nguồn sự thật duy nhất, không tính lại từ thời gian khi đóng phiên.
+    /// </summary>
+    public void AccumulateCost(decimal amount)
+    {
+        TotalCost += amount;
+        SetUpdated();
+    }
+
+    /// <summary>
+    /// Đóng phiên - chỉ chốt EndTime và Status.
+    /// TotalCost giữ nguyên giá trị đã cộng dồn từ AccumulateCost.
+    /// </summary>
     public void Close()
     {
         EndTime = DateTime.UtcNow;
-        var hours = (decimal)(EndTime.Value - StartTime).TotalHours;
-        var rawCost = hours * PricePerHour;
-        TotalCost = rawCost * (1 - Discount);
         Status = SessionStatus.Closed;
         SetUpdated();
     }
