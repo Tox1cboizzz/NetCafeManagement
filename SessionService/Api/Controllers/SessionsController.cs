@@ -37,6 +37,22 @@ public class SessionsController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }
 
+    [HttpGet("history")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> GetHistory([FromQuery] DateTime? date)
+    {
+        var result = await _mediator.Send(new GetAllSessionsQuery(date));
+        return Ok(result.Data);
+    }
+
+    [HttpGet("revenue")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> GetRevenue([FromQuery] DateTime? date)
+    {
+        var result = await _mediator.Send(new GetRevenueQuery(date));
+        return Ok(result.Data);
+    }
+
     [HttpGet("{sessionId:guid}/invoice")]
     public async Task<IActionResult> GetInvoice(Guid sessionId)
     {

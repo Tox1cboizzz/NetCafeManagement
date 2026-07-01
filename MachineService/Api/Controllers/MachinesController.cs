@@ -15,7 +15,11 @@ public class MachinesController : ControllerBase
     public MachinesController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll() => Ok((await _mediator.Send(new GetAllMachinesQuery())).Data);
+    public async Task<IActionResult> GetAll()
+    {
+        var result = await _mediator.Send(new GetAllMachinesQuery());
+        return Ok(result.Data);
+    }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
@@ -32,11 +36,19 @@ public class MachinesController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
     }
 
+    [HttpPut("{id:guid}/price")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdatePrice(Guid id, [FromBody] UpdatePriceRequest req)
+    {
+        var result = await _mediator.Send(new UpdateMachinePriceCommand(id, req.PricePerHour));
+        return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
+    }
+
     [HttpPost("{id:guid}/occupy")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> Occupy(Guid id, [FromBody] OccupyMachineRequest req)
     {
-        var result = await _mediator.Send(new OccupyMachineCommand(id, req.UserId));
+        var result = await _mediator.Send(new OccupyMachineCommand(id, req.UserId, req.UserPhone));
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
     }
 

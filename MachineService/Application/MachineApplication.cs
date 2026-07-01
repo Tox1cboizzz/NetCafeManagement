@@ -6,9 +6,10 @@ using MachineService.Infrastructure.Data;
 
 namespace MachineService.Application.DTOs
 {
-    public record MachineDto(Guid Id, string Name, string Type, decimal PricePerHour, string Status, Guid? CurrentUserId, string? Specs);
+    public record MachineDto(Guid Id, string Name, string Type, decimal PricePerHour, string Status, Guid? CurrentUserId, string? CurrentUserPhone, DateTime? SessionStartTime, string? Specs);
     public record CreateMachineRequest(string Name, string Type, decimal PricePerHour, string? Specs);
-    public record OccupyMachineRequest(Guid UserId);
+    public record UpdatePriceRequest(decimal PricePerHour);
+    public record OccupyMachineRequest(Guid UserId, string UserPhone);
 }
 
 namespace MachineService.Application.Commands
@@ -16,7 +17,8 @@ namespace MachineService.Application.Commands
     using MachineService.Application.DTOs;
 
     public record CreateMachineCommand(string Name, string Type, decimal PricePerHour, string? Specs) : IRequest<Result<MachineDto>>;
-    public record OccupyMachineCommand(Guid MachineId, Guid UserId) : IRequest<Result<MachineDto>>;
+    public record UpdateMachinePriceCommand(Guid MachineId, decimal PricePerHour) : IRequest<Result<MachineDto>>;
+    public record OccupyMachineCommand(Guid MachineId, Guid UserId, string UserPhone) : IRequest<Result<MachineDto>>;
     public record ReleaseMachineCommand(Guid MachineId) : IRequest<Result<MachineDto>>;
     public record GetAllMachinesQuery() : IRequest<Result<List<MachineDto>>>;
     public record GetMachineByIdQuery(Guid Id) : IRequest<Result<MachineDto>>;
@@ -24,7 +26,7 @@ namespace MachineService.Application.Commands
     internal static class MachineMapper
     {
         public static MachineDto ToDto(Machine m) =>
-            new(m.Id, m.Name, m.Type.ToString(), m.PricePerHour, m.Status.ToString(), m.CurrentUserId, m.Specs);
+            new(m.Id, m.Name, m.Type.ToString(), m.PricePerHour, m.Status.ToString(), m.CurrentUserId, m.CurrentUserPhone, m.SessionStartTime, m.Specs);
     }
 
     public class CreateMachineCommandHandler : IRequestHandler<CreateMachineCommand, Result<MachineDto>>
@@ -42,6 +44,20 @@ namespace MachineService.Application.Commands
         }
     }
 
+    public class UpdateMachinePriceCommandHandler : IRequestHandler<UpdateMachinePriceCommand, Result<MachineDto>>
+    {
+        private readonly MachineDbContext _context;
+        public UpdateMachinePriceCommandHandler(MachineDbContext ctx) => _context = ctx;
+        public async Task<Result<MachineDto>> Handle(UpdateMachinePriceCommand req, CancellationToken ct)
+        {
+            var machine = await _context.Machines.FindAsync(req.MachineId);
+            if (machine == null) return Result<MachineDto>.Failure("Machine not found");
+            machine.UpdatePrice(req.PricePerHour);
+            await _context.SaveChangesAsync(ct);
+            return Result<MachineDto>.Success(MachineMapper.ToDto(machine));
+        }
+    }
+
     public class OccupyMachineCommandHandler : IRequestHandler<OccupyMachineCommand, Result<MachineDto>>
     {
         private readonly MachineDbContext _context;
@@ -51,7 +67,7 @@ namespace MachineService.Application.Commands
             var machine = await _context.Machines.FindAsync(req.MachineId);
             if (machine == null) return Result<MachineDto>.Failure("Machine not found");
             if (machine.Status != MachineStatus.Available) return Result<MachineDto>.Failure("Machine not available");
-            machine.Occupy(req.UserId);
+            machine.Occupy(req.UserId, req.UserPhone);
             await _context.SaveChangesAsync(ct);
             return Result<MachineDto>.Success(MachineMapper.ToDto(machine));
         }

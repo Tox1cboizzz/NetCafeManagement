@@ -16,6 +16,7 @@ public class MachineDbContext : DbContext
             e.Property(x => x.Name).HasMaxLength(50).IsRequired();
             e.Property(x => x.PricePerHour).HasPrecision(18, 2);
             e.Property(x => x.Specs).HasMaxLength(200);
+            e.Property(x => x.CurrentUserPhone).HasMaxLength(15);
         });
     }
 }

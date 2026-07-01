@@ -58,4 +58,13 @@ public class AuthController : ControllerBase
         var result = await _mediator.Send(new GetUserByIdQuery(id));
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }
+
+    // API tìm user bằng SĐT - dùng khi mở phiên chơi
+    [HttpGet("users/by-phone/{phone}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> GetUserByPhone(string phone)
+    {
+        var result = await _mediator.Send(new GetUserByPhoneQuery(phone));
+        return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
+    }
 }
