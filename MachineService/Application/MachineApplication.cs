@@ -67,6 +67,12 @@ namespace MachineService.Application.Commands
             var machine = await _context.Machines.FindAsync(req.MachineId);
             if (machine == null) return Result<MachineDto>.Failure("Machine not found");
             if (machine.Status != MachineStatus.Available) return Result<MachineDto>.Failure("Machine not available");
+
+            // Chặn 1 khách dùng 2 máy cùng lúc
+            var alreadyUsing = await _context.Machines.AnyAsync(
+                m => m.CurrentUserId == req.UserId && m.Status == MachineStatus.InUse, ct);
+            if (alreadyUsing) return Result<MachineDto>.Failure("Khách này đang dùng máy khác rồi");
+
             machine.Occupy(req.UserId, req.UserPhone);
             await _context.SaveChangesAsync(ct);
             return Result<MachineDto>.Success(MachineMapper.ToDto(machine));
