@@ -81,7 +81,13 @@ namespace SessionService.Application.Commands
     public class CloseSessionCommandHandler : IRequestHandler<CloseSessionCommand, Result<InvoiceDto>>
     {
         private readonly SessionDbContext _context;
-        public CloseSessionCommandHandler(SessionDbContext ctx) => _context = ctx;
+        private readonly IHttpClientFactory _httpClientFactory;
+
+        public CloseSessionCommandHandler(SessionDbContext ctx, IHttpClientFactory httpClientFactory)
+        {
+            _context = ctx;
+            _httpClientFactory = httpClientFactory;
+        }
 
         public async Task<Result<InvoiceDto>> Handle(CloseSessionCommand req, CancellationToken ct)
         {
@@ -89,10 +95,20 @@ namespace SessionService.Application.Commands
             if (session == null) return Result<InvoiceDto>.Failure("Session not found");
             if (session.Status == SessionStatus.Closed) return Result<InvoiceDto>.Failure("Already closed");
 
+            var machineId = session.MachineId;
             session.Close();
             var invoice = Invoice.Create(session.Id, session.TotalCost, req.FoodCost);
             _context.Invoices.Add(invoice);
             await _context.SaveChangesAsync(ct);
+
+            // Giải phóng máy sau khi đóng phiên
+            try
+            {
+                var machineClient = _httpClientFactory.CreateClient("MachineService");
+                await machineClient.PostAsync($"/api/machines/{machineId}/release", null, ct);
+            }
+            catch { }
+
             return Result<InvoiceDto>.Success(new InvoiceDto(invoice.Id, invoice.SessionId, invoice.PlayCost, invoice.FoodCost, invoice.TotalCost, invoice.CreatedAt));
         }
     }
