@@ -33,11 +33,44 @@ namespace SessionService.Application.Commands
     public class StartSessionCommandHandler : IRequestHandler<StartSessionCommand, Result<SessionDto>>
     {
         private readonly SessionDbContext _context;
-        public StartSessionCommandHandler(SessionDbContext ctx) => _context = ctx;
+        private readonly IHttpClientFactory _httpClientFactory;
+
+        public StartSessionCommandHandler(SessionDbContext ctx, IHttpClientFactory httpClientFactory)
+        {
+            _context = ctx;
+            _httpClientFactory = httpClientFactory;
+        }
+
         public async Task<Result<SessionDto>> Handle(StartSessionCommand req, CancellationToken ct)
         {
+            // Check phiên đang chạy
             var active = await _context.Sessions.AnyAsync(s => s.UserId == req.UserId && s.Status == SessionStatus.Active, ct);
-            if (active) return Result<SessionDto>.Failure("User already has an active session");
+            if (active) return Result<SessionDto>.Failure("Khách này đang có phiên chơi chưa đóng");
+
+            // Check số dư ví - phải có ít nhất đủ tiền 1 phút
+            var minBalance = Math.Round(req.PricePerHour / 60m * (1 - req.Discount), 0);
+            try
+            {
+                var walletClient = _httpClientFactory.CreateClient("WalletService");
+                var res = await walletClient.GetAsync($"/api/wallet/{req.UserId}", ct);
+                if (res.IsSuccessStatusCode)
+                {
+                    var json = await res.Content.ReadAsStringAsync(ct);
+                    var doc = System.Text.Json.JsonDocument.Parse(json);
+                    var balance = doc.RootElement.GetProperty("balance").GetDecimal();
+
+                    if (balance <= 0)
+                        return Result<SessionDto>.Failure("Tài khoản không có tiền. Vui lòng nạp tiền trước khi chơi");
+
+                    if (balance < minBalance)
+                        return Result<SessionDto>.Failure($"Số dư không đủ. Cần ít nhất {minBalance:N0}đ để bắt đầu (đủ 1 phút chơi)");
+                }
+            }
+            catch
+            {
+                // Nếu không kết nối được WalletService thì vẫn cho chơi (tránh block hoàn toàn)
+            }
+
             var session = Session.Create(req.UserId, req.MachineId, req.PricePerHour, req.Discount);
             _context.Sessions.Add(session);
             await _context.SaveChangesAsync(ct);
@@ -49,6 +82,7 @@ namespace SessionService.Application.Commands
     {
         private readonly SessionDbContext _context;
         public CloseSessionCommandHandler(SessionDbContext ctx) => _context = ctx;
+
         public async Task<Result<InvoiceDto>> Handle(CloseSessionCommand req, CancellationToken ct)
         {
             var session = await _context.Sessions.FindAsync(req.SessionId);
@@ -81,11 +115,9 @@ namespace SessionService.Application.Commands
         public async Task<Result<List<SessionDto>>> Handle(GetAllSessionsQuery req, CancellationToken ct)
         {
             var query = _context.Sessions.AsQueryable();
-            if (req.Date.HasValue)
-                query = query.Where(s => s.StartTime.Date == req.Date.Value.Date);
-            else
-                query = query.Where(s => s.StartTime.Date == DateTime.UtcNow.Date);
-
+            query = req.Date.HasValue
+                ? query.Where(s => s.StartTime.Date == req.Date.Value.Date)
+                : query.Where(s => s.StartTime.Date == DateTime.UtcNow.Date);
             var sessions = await query.OrderByDescending(s => s.StartTime).ToListAsync(ct);
             return Result<List<SessionDto>>.Success(sessions.Select(SessionMapper.ToDto).ToList());
         }
@@ -98,27 +130,12 @@ namespace SessionService.Application.Commands
         public async Task<Result<RevenueDto>> Handle(GetRevenueQuery req, CancellationToken ct)
         {
             var date = req.Date ?? DateTime.UtcNow;
-            var sessions = await _context.Sessions
-                .Where(s => s.StartTime.Date == date.Date)
-                .ToListAsync(ct);
-
-            // Active sessions: tính tiền đã chơi đến hiện tại (realtime)
-            var now = DateTime.UtcNow;
-            var activeRevenue = sessions
-                .Where(s => s.Status == SessionStatus.Active)
-                .Sum(s => s.TotalCost); // TotalCost đã được cộng dồn từ background job
-
-            var closedRevenue = sessions
-                .Where(s => s.Status == SessionStatus.Closed)
-                .Sum(s => s.TotalCost);
-
+            var sessions = await _context.Sessions.Where(s => s.StartTime.Date == date.Date).ToListAsync(ct);
+            var activeRevenue = sessions.Where(s => s.Status == SessionStatus.Active).Sum(s => s.TotalCost);
+            var closedRevenue = sessions.Where(s => s.Status == SessionStatus.Closed).Sum(s => s.TotalCost);
             return Result<RevenueDto>.Success(new RevenueDto(
-                activeRevenue + closedRevenue,
-                activeRevenue,
-                closedRevenue,
-                sessions.Count,
-                sessions.Count(s => s.Status == SessionStatus.Active)
-            ));
+                activeRevenue + closedRevenue, activeRevenue, closedRevenue,
+                sessions.Count, sessions.Count(s => s.Status == SessionStatus.Active)));
         }
     }
 
