@@ -92,7 +92,7 @@ public class SessionBillingBackgroundService : BackgroundService
     {
         try
         {
-            var res = await client.GetAsync($"/api/wallet/{userId}", ct);
+            var res = await client.GetAsync($"/api/wallet/internal/{userId}", ct);
             if (!res.IsSuccessStatusCode) return 0;
             var json = await res.Content.ReadAsStringAsync(ct);
             var doc = System.Text.Json.JsonDocument.Parse(json);
@@ -111,7 +111,7 @@ public class SessionBillingBackgroundService : BackgroundService
                 amount,
                 note = $"Phí chơi máy - phiên {sessionId}"
             });
-            var res = await client.PostAsync("/api/wallet/deduct",
+            var res = await client.PostAsync("/api/wallet/internal/deduct",
                 new StringContent(body, System.Text.Encoding.UTF8, "application/json"), ct);
             return res.IsSuccessStatusCode;
         }

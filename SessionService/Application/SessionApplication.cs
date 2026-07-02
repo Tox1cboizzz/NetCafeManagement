@@ -52,7 +52,7 @@ namespace SessionService.Application.Commands
             try
             {
                 var walletClient = _httpClientFactory.CreateClient("WalletService");
-                var res = await walletClient.GetAsync($"/api/wallet/{req.UserId}", ct);
+                var res = await walletClient.GetAsync($"/api/wallet/internal/{req.UserId}", ct);
                 if (res.IsSuccessStatusCode)
                 {
                     var json = await res.Content.ReadAsStringAsync(ct);

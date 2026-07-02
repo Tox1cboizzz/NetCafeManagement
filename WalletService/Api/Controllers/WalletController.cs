@@ -45,6 +45,23 @@ public class WalletController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
     }
 
+    // Internal endpoint - không cần auth, chỉ dùng giữa các service nội bộ
+    [HttpPost("internal/deduct")]
+    [AllowAnonymous]
+    public async Task<IActionResult> InternalDeduct([FromBody] DeductRequest req)
+    {
+        var result = await _mediator.Send(new DeductCommand(req.UserId, req.Amount, req.Note));
+        return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
+    }
+
+    [HttpGet("internal/{userId:guid}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> InternalGetWallet(Guid userId)
+    {
+        var result = await _mediator.Send(new GetWalletByUserIdQuery(userId));
+        return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
+    }
+
     [HttpGet("{userId:guid}/transactions")]
     public async Task<IActionResult> GetTransactions(Guid userId)
     {
