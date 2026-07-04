@@ -145,13 +145,8 @@ namespace SessionService.Application.Commands
         public GetRevenueQueryHandler(SessionDbContext ctx) => _context = ctx;
         public async Task<Result<RevenueDto>> Handle(GetRevenueQuery req, CancellationToken ct)
         {
-            // Lấy tất cả sessions trong 24h gần nhất để tránh lệch timezone
-            var cutoff = DateTime.UtcNow.AddHours(-24);
-            var sessions = await _context.Sessions
-                .Where(s => req.Date.HasValue
-                    ? s.StartTime.Date == req.Date.Value.Date
-                    : s.StartTime >= cutoff)
-                .ToListAsync(ct);
+            // Lấy tất cả sessions (không filter ngày để tránh lệch timezone UTC vs local)
+            var sessions = await _context.Sessions.ToListAsync(ct);
             var activeRevenue = sessions.Where(s => s.Status == SessionStatus.Active).Sum(s => s.TotalCost);
             var closedRevenue = sessions.Where(s => s.Status == SessionStatus.Closed).Sum(s => s.TotalCost);
             return Result<RevenueDto>.Success(new RevenueDto(
