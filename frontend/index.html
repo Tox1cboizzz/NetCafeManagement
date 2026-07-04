@@ -606,8 +606,13 @@ async function startSession() {
   try {
     const wallet = await http('wallet', `/wallet/${selectedCustomer.id}`);
     const discount = wallet.discount || 0;
+
+    // Bước 1: Start session trước (kiểm tra balance)
+    const session = await http('session', '/sessions/start', 'POST', { userId: selectedCustomer.id, machineId, pricePerHour, discount });
+
+    // Bước 2: Chỉ occupy machine khi session tạo thành công
     await http('machine', `/machines/${machineId}/occupy`, 'POST', { userId: selectedCustomer.id, userPhone: selectedCustomer.phone });
-    await http('session', '/sessions/start', 'POST', { userId: selectedCustomer.id, machineId, pricePerHour, discount });
+
     toast(`Mở phiên cho ${selectedCustomer.fullName} thành công!`);
     closeModal('modal-session');
     loadMachines();
