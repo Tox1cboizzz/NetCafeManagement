@@ -535,8 +535,8 @@ async function loadSessions() {
 
 async function closeSession(sessionId) {
   try {
-    await http('session', `/${sessionId}/close`, 'POST', { foodCost: 0 });
-    toast('Đã đóng phiên!'); loadSessions();
+    await http('session', `/sessions/${sessionId}/close`, 'POST', { foodCost: 0 });
+    toast('Đã đóng phiên!'); loadSessions(); loadDashboard();
   } catch(e) { toast('Lỗi: '+e.message,'error'); }
 }
 

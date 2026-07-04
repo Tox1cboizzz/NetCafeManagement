@@ -25,13 +25,14 @@ public class SessionBillingBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
-        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
+        await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
+        _logger.LogInformation("SessionBillingBackgroundService started - billing every 1 minute");
 
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             try { await ProcessAsync(stoppingToken); }
-            catch (Exception ex) { _logger.LogError(ex, "Lỗi billing"); }
+            catch (Exception ex) { _logger.LogError(ex, "Billing error"); }
         }
     }
 
@@ -44,46 +45,57 @@ public class SessionBillingBackgroundService : BackgroundService
             .Where(s => s.Status == SessionStatus.Active)
             .ToListAsync(ct);
 
-        if (!sessions.Any()) return;
+        if (!sessions.Any())
+        {
+            _logger.LogInformation("No active sessions to bill");
+            return;
+        }
+
+        _logger.LogInformation("Billing {Count} active sessions", sessions.Count);
 
         var walletClient = _httpClientFactory.CreateClient("WalletService");
         var machineClient = _httpClientFactory.CreateClient("MachineService");
 
         foreach (var session in sessions)
         {
-            // Tiền mỗi phút = PricePerHour / 60 * (1 - Discount)
+            // Tiền mỗi phút = PricePerHour / 60 * (1 - Discount), làm tròn
             var amountPerMinute = Math.Round((session.PricePerHour / 60m) * (1 - session.Discount), 0);
             if (amountPerMinute <= 0) continue;
 
-            // Check số dư trước
+            _logger.LogInformation("Billing session {SessionId}: {Amount}đ/min, userId={UserId}",
+                session.Id, amountPerMinute, session.UserId);
+
+            // Check số dư
             var balance = await GetBalanceAsync(walletClient, session.UserId, ct);
+            _logger.LogInformation("User {UserId} balance: {Balance}đ", session.UserId, balance);
 
             if (balance <= 0)
             {
-                // Hết tiền → đóng phiên + khóa máy
-                _logger.LogWarning("User {UserId} hết tiền, đóng session {SessionId}", session.UserId, session.Id);
+                _logger.LogWarning("User {UserId} has 0 balance, closing session", session.UserId);
                 session.Close();
                 await context.SaveChangesAsync(ct);
                 await ReleaseMachineAsync(machineClient, session.MachineId, ct);
                 continue;
             }
 
-            // Nếu số dư < tiền 1 phút → trừ hết số dư còn lại rồi đóng
             var deductAmount = balance < amountPerMinute ? balance : amountPerMinute;
             var success = await DeductAsync(walletClient, session.UserId, deductAmount, session.Id, ct);
 
-            if (!success || balance <= amountPerMinute)
+            if (success)
             {
-                _logger.LogWarning("User {UserId} hết tiền sau phút này, đóng session {SessionId}", session.UserId, session.Id);
                 session.AccumulateCost(deductAmount);
+                await context.SaveChangesAsync(ct);
+                _logger.LogInformation("Deducted {Amount}đ from user {UserId}, TotalCost now: {TotalCost}đ",
+                    deductAmount, session.UserId, session.TotalCost);
+            }
+
+            // Đóng phiên nếu hết tiền sau lần trừ này
+            if (balance <= amountPerMinute)
+            {
+                _logger.LogWarning("User {UserId} balance depleted, closing session", session.UserId);
                 session.Close();
                 await context.SaveChangesAsync(ct);
                 await ReleaseMachineAsync(machineClient, session.MachineId, ct);
-            }
-            else
-            {
-                session.AccumulateCost(deductAmount);
-                await context.SaveChangesAsync(ct);
             }
         }
     }
@@ -98,7 +110,11 @@ public class SessionBillingBackgroundService : BackgroundService
             var doc = System.Text.Json.JsonDocument.Parse(json);
             return doc.RootElement.GetProperty("balance").GetDecimal();
         }
-        catch { return 0; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get balance for user {UserId}", userId);
+            return 0;
+        }
     }
 
     private async Task<bool> DeductAsync(HttpClient client, Guid userId, decimal amount, Guid sessionId, CancellationToken ct)
@@ -109,13 +125,23 @@ public class SessionBillingBackgroundService : BackgroundService
             {
                 userId,
                 amount,
-                note = $"Phí chơi máy - phiên {sessionId}"
+                note = $"Phí chơi - phiên {sessionId}"
             });
             var res = await client.PostAsync("/api/wallet/internal/deduct",
                 new StringContent(body, System.Text.Encoding.UTF8, "application/json"), ct);
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var err = await res.Content.ReadAsStringAsync(ct);
+                _logger.LogWarning("Deduct failed for user {UserId}: {Error}", userId, err);
+            }
             return res.IsSuccessStatusCode;
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Deduct error for user {UserId}", userId);
+            return false;
+        }
     }
 
     private async Task ReleaseMachineAsync(HttpClient client, Guid machineId, CancellationToken ct)
