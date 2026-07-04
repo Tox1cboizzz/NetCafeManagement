@@ -131,10 +131,10 @@ namespace SessionService.Application.Commands
         public async Task<Result<List<SessionDto>>> Handle(GetAllSessionsQuery req, CancellationToken ct)
         {
             var query = _context.Sessions.AsQueryable();
-            query = req.Date.HasValue
-                ? query.Where(s => s.StartTime.Date == req.Date.Value.Date)
-                : query.Where(s => s.StartTime.Date == DateTime.UtcNow.Date);
-            var sessions = await query.OrderByDescending(s => s.StartTime).ToListAsync(ct);
+            if (req.Date.HasValue)
+                query = query.Where(s => s.StartTime.Date == req.Date.Value.Date);
+            // Không filter ngày - lấy 50 phiên gần nhất để tránh lệch timezone
+            var sessions = await query.OrderByDescending(s => s.StartTime).Take(50).ToListAsync(ct);
             return Result<List<SessionDto>>.Success(sessions.Select(SessionMapper.ToDto).ToList());
         }
     }
@@ -145,8 +145,13 @@ namespace SessionService.Application.Commands
         public GetRevenueQueryHandler(SessionDbContext ctx) => _context = ctx;
         public async Task<Result<RevenueDto>> Handle(GetRevenueQuery req, CancellationToken ct)
         {
-            var date = req.Date ?? DateTime.UtcNow;
-            var sessions = await _context.Sessions.Where(s => s.StartTime.Date == date.Date).ToListAsync(ct);
+            // Lấy tất cả sessions trong 24h gần nhất để tránh lệch timezone
+            var cutoff = DateTime.UtcNow.AddHours(-24);
+            var sessions = await _context.Sessions
+                .Where(s => req.Date.HasValue
+                    ? s.StartTime.Date == req.Date.Value.Date
+                    : s.StartTime >= cutoff)
+                .ToListAsync(ct);
             var activeRevenue = sessions.Where(s => s.Status == SessionStatus.Active).Sum(s => s.TotalCost);
             var closedRevenue = sessions.Where(s => s.Status == SessionStatus.Closed).Sum(s => s.TotalCost);
             return Result<RevenueDto>.Success(new RevenueDto(
