@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NetCafe - Máy khách</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{
+  --bg:#0a0c10;--surface:#111318;--surface2:#181c24;--border:#1e2330;
+  --accent:#4f8eff;--accent2:#7c5cfc;--green:#22c55e;--red:#ef4444;
+  --yellow:#f59e0b;--text:#e2e8f0;--muted:#475569;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;user-select:none;}
+
+/* ── LOCK SCREEN ── */
+#lock-screen{
+  height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 30%,#0d1a30 0%,#0a0c10 65%);
+  position:relative;
+}
+.lock-time{font-size:80px;font-weight:300;font-family:var(--mono);letter-spacing:-2px;color:#fff;opacity:.9;margin-bottom:8px;}
+.lock-date{font-size:16px;color:var(--muted);margin-bottom:60px;letter-spacing:1px;}
+
+.lock-card{
+  background:rgba(255,255,255,.04);backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,.08);border-radius:24px;
+  padding:40px;width:380px;text-align:center;
+}
+.lock-icon{width:72px;height:72px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:20px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:32px;margin-bottom:20px;box-shadow:0 12px 40px rgba(79,142,255,.3);}
+.lock-title{font-size:20px;font-weight:700;margin-bottom:6px;}
+.lock-subtitle{font-size:13px;color:var(--muted);margin-bottom:28px;}
+
+.input-group{position:relative;margin-bottom:14px;}
+.input-group input{
+  width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  border-radius:12px;padding:14px 18px;color:var(--text);font-family:var(--sans);
+  font-size:15px;outline:none;transition:all .2s;text-align:center;letter-spacing:2px;
+}
+.input-group input:focus{border-color:var(--accent);background:rgba(79,142,255,.08);}
+.input-group input::placeholder{letter-spacing:0;color:var(--muted);}
+
+.btn-check{
+  width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all .2s;font-family:var(--sans);
+  box-shadow:0 8px 24px rgba(79,142,255,.3);
+}
+.btn-check:hover{transform:translateY(-1px);box-shadow:0 12px 32px rgba(79,142,255,.4);}
+.btn-check:active{transform:translateY(0);}
+
+.lock-error{color:var(--red);font-size:13px;margin-top:10px;min-height:20px;}
+.lock-note{color:var(--muted);font-size:12px;margin-top:20px;line-height:1.6;}
+
+/* Particles background */
+.particles{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+.particle{position:absolute;width:2px;height:2px;background:var(--accent);border-radius:50%;opacity:.3;animation:float linear infinite;}
+@keyframes float{from{transform:translateY(100vh) rotate(0deg)}to{transform:translateY(-100px) rotate(360deg)}}
+
+/* ── ACTIVE SESSION SCREEN ── */
+#session-screen{
+  height:100vh;display:none;flex-direction:column;
+  background:radial-gradient(ellipse at 30% 20%,#0d1f10 0%,#0a0c10 70%);
+  position:relative;overflow:hidden;
+}
+
+/* Header */
+.s-header{
+  padding:20px 32px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);background:rgba(0,0,0,.3);
+}
+.s-header-left{display:flex;align-items:center;gap:14px;}
+.s-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--green),#16a34a);
+  display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;}
+.s-username{font-size:16px;font-weight:700;}
+.s-phone{font-size:12px;color:var(--muted);}
+.s-header-right{display:flex;align-items:center;gap:12px;}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.live-text{font-size:12px;color:var(--green);font-weight:600;}
+
+/* Main content */
+.s-main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:28px 32px;align-content:start;}
+
+.s-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;padding:28px;}
+.s-card-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.s-card-value{font-size:48px;font-weight:700;font-family:var(--mono);line-height:1;}
+.s-card-sub{font-size:13px;color:var(--muted);margin-top:8px;}
+
+.timer-card{border-color:rgba(245,158,11,.2);background:rgba(245,158,11,.03);}
+.timer-card .s-card-value{color:var(--yellow);}
+
+.balance-card{border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.03);}
+.balance-card .s-card-value{color:var(--green);font-size:36px;}
+
+.cost-card{border-color:rgba(79,142,255,.2);background:rgba(79,142,255,.03);}
+.cost-card .s-card-value{color:var(--accent);font-size:36px;}
+
+.machine-card{border-color:rgba(124,92,252,.2);background:rgba(124,92,252,.03);}
+.machine-card .s-card-value{color:#a78bfa;font-size:32px;}
+
+/* Progress bar - còn bao nhiêu % tiền */
+.balance-bar-wrap{margin-top:12px;}
+.balance-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px;}
+.balance-bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
+.balance-bar-fill{height:100%;border-radius:3px;transition:width .5s ease,background .5s ease;}
+
+/* Footer */
+.s-footer{padding:16px 32px;border-top:1px solid var(--border);background:rgba(0,0,0,.3);
+  display:flex;align-items:center;justify-content:space-between;}
+.s-footer-info{font-size:12px;color:var(--muted);}
+.btn-call{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:var(--red);
+  padding:8px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);}
+.btn-call:hover{background:rgba(239,68,68,.2);}
+
+/* Warning overlay */
+#warning-overlay{
+  position:fixed;inset:0;background:rgba(239,68,68,.15);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;z-index:100;
+  animation:warningPulse 1s infinite;
+}
+@keyframes warningPulse{0%,100%{background:rgba(239,68,68,.1)}50%{background:rgba(239,68,68,.25)}}
+.warning-box{background:#1a0505;border:2px solid var(--red);border-radius:20px;padding:40px;text-align:center;max-width:400px;}
+.warning-icon{font-size:56px;margin-bottom:16px;}
+.warning-title{font-size:22px;font-weight:700;color:var(--red);margin-bottom:8px;}
+.warning-text{font-size:14px;color:#fca5a5;line-height:1.6;}
+.warning-countdown{font-size:48px;font-weight:700;font-family:var(--mono);color:var(--red);margin:16px 0;}
+</style>
+</head>
+<body>
+
+<!-- PARTICLES -->
+<div class="particles" id="particles"></div>
+
+<!-- LOCK SCREEN -->
+<div id="lock-screen">
+  <div class="lock-time" id="lock-time">00:00</div>
+  <div class="lock-date" id="lock-date"></div>
+
+  <div class="lock-card">
+    <div class="lock-icon">🖥️</div>
+    <div class="lock-title">NetCafe</div>
+    <div class="lock-subtitle">Nhập số điện thoại để kiểm tra tài khoản</div>
+
+    <div class="input-group">
+      <input type="tel" id="phone-input" placeholder="Số điện thoại" maxlength="15" />
+    </div>
+    <button class="btn-check" onclick="checkPhone()">Kiểm tra</button>
+    <div class="lock-error" id="lock-error"></div>
+    <div class="lock-note">💡 Liên hệ nhân viên để được mở máy và nạp tiền</div>
+  </div>
+</div>
+
+<!-- SESSION SCREEN -->
+<div id="session-screen">
+  <div class="s-header">
+    <div class="s-header-left">
+      <div class="s-avatar" id="s-avatar">K</div>
+      <div>
+        <div class="s-username" id="s-username">Khách</div>
+        <div class="s-phone" id="s-phone">SĐT</div>
+      </div>
+    </div>
+    <div class="s-header-right">
+      <div class="live-dot"></div>
+      <div class="live-text">ĐANG CHƠI</div>
+    </div>
+  </div>
+
+  <div class="s-main">
+    <!-- Timer -->
+    <div class="s-card timer-card">
+      <div class="s-card-label">⏱️ Thời gian chơi</div>
+      <div class="s-card-value" id="s-timer">00:00:00</div>
+      <div class="s-card-sub" id="s-start-time">Bắt đầu lúc —</div>
+    </div>
+
+    <!-- Balance -->
+    <div class="s-card balance-card">
+      <div class="s-card-label">💰 Số dư còn lại</div>
+      <div class="s-card-value" id="s-balance">—</div>
+      <div class="balance-bar-wrap">
+        <div class="balance-bar-label">
+          <span>Còn lại</span>
+          <span id="s-balance-pct">—</span>
+        </div>
+        <div class="balance-bar"><div class="balance-bar-fill" id="s-balance-bar" style="width:100%;background:var(--green)"></div></div>
+      </div>
+    </div>
+
+    <!-- Cost -->
+    <div class="s-card cost-card">
+      <div class="s-card-label">💵 Đã tiêu phiên này</div>
+      <div class="s-card-value" id="s-cost">0đ</div>
+      <div class="s-card-sub" id="s-rate">—đ/giờ</div>
+    </div>
+
+    <!-- Machine -->
+    <div class="s-card machine-card">
+      <div class="s-card-label">🖥️ Thông tin máy</div>
+      <div class="s-card-value" id="s-machine-name">—</div>
+      <div class="s-card-sub" id="s-tier">—</div>
+    </div>
+  </div>
+
+  <div class="s-footer">
+    <div class="s-footer-info" id="s-footer-info">Cập nhật mỗi 30 giây</div>
+    <button class="btn-call" onclick="callStaff()">🔔 Gọi nhân viên</button>
+  </div>
+</div>
+
+<!-- WARNING OVERLAY -->
+<div id="warning-overlay">
+  <div class="warning-box">
+    <div class="warning-icon">⚠️</div>
+    <div class="warning-title">Sắp hết tiền!</div>
+    <div class="warning-text">Tài khoản của bạn sắp hết tiền.<br>Vui lòng liên hệ nhân viên để nạp thêm.</div>
+    <div class="warning-countdown" id="w-countdown">—</div>
+    <div style="font-size:13px;color:#fca5a5">phút còn lại</div>
+  </div>
+</div>
+
+<script>
+const API = {
+  auth:    'http://localhost:5001/api',
+  wallet:  'http://localhost:5002/api',
+  machine: 'http://localhost:5003/api',
+  session: 'http://localhost:5004/api',
+};
+
+let currentUser = null;
+let currentSession = null;
+let currentWallet = null;
+let initialTopup = 0;
+let timerInterval = null;
+let refreshInterval = null;
+
+// ── PARTICLES ──
+function createParticles() {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (8 + Math.random() * 12) + 's';
+    p.style.animationDelay = (Math.random() * 10) + 's';
+    p.style.opacity = (0.1 + Math.random() * 0.3).toString();
+    container.appendChild(p);
+  }
+}
+
+// ── CLOCK ──
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours().toString().padStart(2,'0');
+  const m = now.getMinutes().toString().padStart(2,'0');
+  document.getElementById('lock-time').textContent = `${h}:${m}`;
+  document.getElementById('lock-date').textContent = now.toLocaleDateString('vi-VN', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+
+// ── HTTP ──
+async function http(service, path) {
+  const res = await fetch(API[service] + path);
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function httpAuth(service, path) {
+  const res = await fetch(API[service] + path, {
+    headers: { Authorization: `Bearer ${localStorage.getItem('m_token') || ''}` }
+  });
+  if (!res.ok) throw new Error('Unauthorized');
+  return res.json();
+}
+
+// ── CHECK PHONE ──
+async function checkPhone() {
+  const phone = document.getElementById('phone-input').value.trim();
+  const errEl = document.getElementById('lock-error');
+  errEl.textContent = '';
+
+  if (!phone) { errEl.textContent = 'Vui lòng nhập số điện thoại'; return; }
+
+  try {
+    // Tìm user bằng SĐT qua internal (cần login tạm để lấy token)
+    // Dùng endpoint public check
+    const res = await fetch(`${API.auth}/auth/users/by-phone/${phone}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('m_token') || ''}` }
+    });
+
+    if (res.status === 401) {
+      // Cần login admin để check - dùng token lưu sẵn
+      errEl.textContent = 'Không thể xác thực. Liên hệ nhân viên.';
+      return;
+    }
+
+    if (!res.ok) {
+      errEl.textContent = 'Không tìm thấy tài khoản với SĐT này';
+      return;
+    }
+
+    const user = await res.json();
+    currentUser = user;
+
+    // Check có phiên active không
+    const sessionRes = await fetch(`${API.session}/sessions/active/${user.id}`);
+    if (!sessionRes.ok) {
+      errEl.textContent = `Xin chào ${user.fullName}! Bạn chưa có phiên chơi. Liên hệ nhân viên để mở máy.`;
+      errEl.style.color = 'var(--yellow)';
+      return;
+    }
+
+    currentSession = await sessionRes.json();
+
+    // Lấy wallet
+    const walletRes = await fetch(`${API.wallet}/wallet/internal/${user.id}`);
+    currentWallet = walletRes.ok ? await walletRes.json() : null;
+    initialTopup = currentWallet?.totalTopup || 0;
+
+    showSessionScreen();
+
+  } catch(e) {
+    errEl.textContent = 'Lỗi kết nối. Kiểm tra mạng.';
+  }
+}
+
+// ── SESSION SCREEN ──
+function showSessionScreen() {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('session-screen').style.display = 'flex';
+
+  // Header
+  document.getElementById('s-avatar').textContent = currentUser.fullName[0].toUpperCase();
+  document.getElementById('s-username').textContent = currentUser.fullName;
+  document.getElementById('s-phone').textContent = currentUser.phone;
+
+  // Machine info
+  document.getElementById('s-machine-name').textContent = 'PC';
+  document.getElementById('s-rate').textContent = `${Number(currentSession.pricePerHour).toLocaleString('vi-VN')}đ/giờ`;
+  document.getElementById('s-tier').textContent = currentSession.discount > 0
+    ? `⭐ VIP · Giảm ${(currentSession.discount*100).toFixed(0)}%`
+    : '💻 Normal';
+
+  // Start time
+  const startLocal = new Date(currentSession.startTime);
+  document.getElementById('s-start-time').textContent =
+    'Bắt đầu lúc ' + startLocal.toLocaleTimeString('vi-VN', {hour:'2-digit',minute:'2-digit'});
+
+  updateSessionUI();
+
+  // Timer realtime
+  timerInterval = setInterval(updateTimer, 1000);
+
+  // Refresh data mỗi 30s
+  refreshInterval = setInterval(refreshData, 30000);
+}
+
+function updateTimer() {
+  if (!currentSession) return;
+  const start = new Date(currentSession.startTime);
+  const diff = Math.floor((Date.now() - start) / 1000);
+  const h = Math.floor(diff / 3600).toString().padStart(2,'0');
+  const m = Math.floor((diff % 3600) / 60).toString().padStart(2,'0');
+  const s = (diff % 60).toString().padStart(2,'0');
+  document.getElementById('s-timer').textContent = `${h}:${m}:${s}`;
+}
+
+function updateSessionUI() {
+  if (!currentWallet || !currentSession) return;
+
+  const balance = currentWallet.balance;
+  const totalCost = currentSession.totalCost;
+  const pricePerMin = (currentSession.pricePerHour / 60) * (1 - currentSession.discount);
+  const minsLeft = pricePerMin > 0 ? Math.floor(balance / pricePerMin) : 999;
+
+  // Balance
+  document.getElementById('s-balance').textContent = Number(balance).toLocaleString('vi-VN') + 'đ';
+
+  // Cost
+  document.getElementById('s-cost').textContent = Number(totalCost).toLocaleString('vi-VN') + 'đ';
+
+  // Progress bar
+  const pct = Math.min(100, Math.max(0, (balance / (balance + totalCost)) * 100));
+  const bar = document.getElementById('s-balance-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = pct > 50 ? 'var(--green)' : pct > 20 ? 'var(--yellow)' : 'var(--red)';
+  document.getElementById('s-balance-pct').textContent = pct.toFixed(0) + '%';
+
+  // Warning nếu còn dưới 5 phút
+  const warning = document.getElementById('warning-overlay');
+  if (minsLeft <= 5 && minsLeft >= 0) {
+    warning.style.display = 'flex';
+    document.getElementById('w-countdown').textContent = minsLeft;
+  } else {
+    warning.style.display = 'none';
+  }
+
+  // Footer
+  document.getElementById('s-footer-info').textContent =
+    `Còn khoảng ${minsLeft > 999 ? '∞' : minsLeft} phút · Cập nhật mỗi 30s`;
+}
+
+async function refreshData() {
+  if (!currentUser || !currentSession) return;
+  try {
+    // Check session còn active không
+    const sessionRes = await fetch(`${API.session}/sessions/active/${currentUser.id}`);
+    if (!sessionRes.ok) {
+      // Phiên đã đóng → lock lại
+      clearIntervals();
+      showLockScreen('Phiên chơi đã kết thúc. Cảm ơn bạn!');
+      return;
+    }
+    currentSession = await sessionRes.json();
+
+    // Refresh wallet
+    const walletRes = await fetch(`${API.wallet}/wallet/internal/${currentUser.id}`);
+    if (walletRes.ok) {
+      currentWallet = await walletRes.json();
+      if (currentWallet.balance <= 0) {
+        clearIntervals();
+        showLockScreen('Tài khoản hết tiền. Cảm ơn bạn!');
+        return;
+      }
+    }
+    updateSessionUI();
+  } catch(e) {}
+}
+
+function clearIntervals() {
+  clearInterval(timerInterval);
+  clearInterval(refreshInterval);
+}
+
+function showLockScreen(msg) {
+  document.getElementById('session-screen').style.display = 'none';
+  document.getElementById('warning-overlay').style.display = 'none';
+  document.getElementById('lock-screen').style.display = 'flex';
+  document.getElementById('lock-error').style.color = 'var(--yellow)';
+  document.getElementById('lock-error').textContent = msg;
+  document.getElementById('phone-input').value = '';
+  currentUser = null; currentSession = null; currentWallet = null;
+}
+
+function callStaff() {
+  alert('🔔 Đã gửi tín hiệu gọi nhân viên!\nNhân viên sẽ đến hỗ trợ bạn trong giây lát.');
+}
+
+// ── ADMIN TOKEN ──
+// Machine cần token admin để gọi API by-phone
+// Lưu token admin vào localStorage key 'm_token' khi login admin
+// Tự động lấy từ admin page nếu đã login
+function syncAdminToken() {
+  const adminToken = localStorage.getItem('token');
+  if (adminToken) localStorage.setItem('m_token', adminToken);
+}
+
+// ── INIT ──
+createParticles();
+updateClock();
+setInterval(updateClock, 1000);
+syncAdminToken();
+
+document.getElementById('phone-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPhone();
+});
+
+// F11 hint
+document.addEventListener('keydown', e => {
+  if (e.key === 'F11') e.preventDefault();
+});
+</script>
+</body>
+</html>
