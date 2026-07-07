@@ -333,12 +333,29 @@ function showApp() {
   goto('dashboard');
 }
 
+function getPageActions(page) {
+  const isAdmin = currentUser?.role === 'Admin';
+  const isStaff = currentUser?.role === 'Staff';
+  switch(page) {
+    case 'dashboard': return `<button class="btn btn-sm btn-ghost" onclick="loadDashboard()">🔄 Refresh</button>`;
+    case 'machines':  return isAdmin
+      ? `<button class="btn btn-sm btn-accent" onclick="openModal('modal-machine')">+ Thêm máy</button>`
+      : `<span style="font-size:12px;color:var(--muted)">Chỉ Admin mới thêm máy được</span>`;
+    case 'customers': return `<button class="btn btn-sm btn-accent" onclick="openModal('modal-customer')">+ Tạo tài khoản</button><button class="btn btn-sm btn-success" onclick="openTopUp()">💰 Nạp tiền</button>`;
+    case 'sessions':  return `<button class="btn btn-sm btn-success" onclick="openStartSession()">▶ Mở phiên</button>`;
+    case 'food':      return isAdmin
+      ? `<button class="btn btn-sm btn-accent" onclick="openModal('modal-food')">+ Thêm món</button>`
+      : ``;
+    default: return '';
+  }
+}
+
 const pages = {
-  dashboard: { title:'Dashboard', actions:`<button class="btn btn-sm btn-ghost" onclick="loadDashboard()">🔄 Refresh</button>`, load:loadDashboard },
-  machines:  { title:'Quản lý máy', actions:`<button class="btn btn-sm btn-accent" onclick="openModal('modal-machine')">+ Thêm máy</button>`, load:loadMachines },
-  customers: { title:'Khách hàng', actions:`<button class="btn btn-sm btn-accent" onclick="openModal('modal-customer')">+ Tạo tài khoản</button><button class="btn btn-sm btn-success" onclick="openTopUp()">💰 Nạp tiền</button>`, load:loadCustomers },
-  sessions:  { title:'Phiên chơi', actions:`<button class="btn btn-sm btn-success" onclick="openStartSession()">▶ Mở phiên</button>`, load:loadSessions },
-  food:      { title:'Đồ ăn & Nước', actions:`<button class="btn btn-sm btn-accent" onclick="openModal('modal-food')">+ Thêm món</button>`, load:loadFood },
+  dashboard: { title:'Dashboard', load:loadDashboard },
+  machines:  { title:'Quản lý máy', load:loadMachines },
+  customers: { title:'Khách hàng', load:loadCustomers },
+  sessions:  { title:'Phiên chơi', load:loadSessions },
+  food:      { title:'Đồ ăn & Nước', load:loadFood },
 };
 
 function goto(page) {
@@ -347,7 +364,7 @@ function goto(page) {
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
   document.getElementById(`page-${page}`).classList.add('active');
   document.getElementById('page-title').textContent = pages[page].title;
-  document.getElementById('topbar-actions').innerHTML = pages[page].actions;
+  document.getElementById('topbar-actions').innerHTML = getPageActions(page);
   pages[page].load();
 }
 
@@ -426,7 +443,7 @@ async function loadMachines() {
         ${m.currentUserPhone ? `<div class="machine-user">📞 ${m.currentUserPhone}</div>` : ''}
         ${m.sessionStartTime ? `<div class="machine-time">🕐 ${fmtTime(m.sessionStartTime)}</div>` : ''}
         <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-sm btn-yellow" onclick="openUpdatePrice('${m.id}','${m.name}',${m.pricePerHour})">✏️ Sửa giá</button>
+          ${currentUser?.role==='Admin'?`<button class="btn btn-sm btn-yellow" onclick="openUpdatePrice('${m.id}','${m.name}',${m.pricePerHour})">✏️ Sửa giá</button>`:''}
           ${m.status==='Available'?`<button class="btn btn-sm btn-success" onclick="openSessionFromMachine('${m.id}',${m.pricePerHour})">▶ Dùng</button>`:''}
           ${m.status==='InUse'?`<button class="btn btn-sm btn-danger" onclick="releaseMachine('${m.id}')">■ Giải phóng</button>`:''}
         </div>
