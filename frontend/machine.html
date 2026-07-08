@@ -84,7 +84,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh
 .live-text{font-size:12px;color:var(--green);font-weight:600;}
 
 /* Main content */
-.s-main{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:28px 32px;align-content:start;}
+.s-main{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;padding:28px 32px;align-content:start;}
 
 .s-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:20px;padding:28px;}
 .s-card-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
@@ -173,7 +173,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh
 
   <div class="s-main">
     <!-- Timer -->
-    <div class="s-card timer-card">
+    <div class="s-card timer-card" style="grid-column:1/-1">
       <div class="s-card-label">⏱️ Thời gian chơi</div>
       <div class="s-card-value" id="s-timer">00:00:00</div>
       <div class="s-card-sub" id="s-start-time">Bắt đầu lúc —</div>
@@ -197,6 +197,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh
       <div class="s-card-label">💵 Đã tiêu phiên này</div>
       <div class="s-card-value" id="s-cost">0đ</div>
       <div class="s-card-sub" id="s-rate">—đ/giờ</div>
+    </div>
+
+    <!-- Time left -->
+    <div class="s-card" id="s-timeleft-card" style="border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.03)">
+      <div class="s-card-label">⏳ Còn chơi được</div>
+      <div class="s-card-value" id="s-timeleft" style="color:var(--green)">—</div>
+      <div class="s-card-sub" id="s-timeleft-sub">với số dư hiện tại</div>
     </div>
 
     <!-- Machine -->
@@ -389,6 +396,37 @@ function updateSessionUI() {
   bar.style.width = pct + '%';
   bar.style.background = pct > 50 ? 'var(--green)' : pct > 20 ? 'var(--yellow)' : 'var(--red)';
   document.getElementById('s-balance-pct').textContent = pct.toFixed(0) + '%';
+
+  // Hiện thời gian còn lại
+  const timeLeftEl = document.getElementById('s-timeleft');
+  const timeLeftCard = document.getElementById('s-timeleft-card');
+  if (balance > 0 && pricePerMin > 0) {
+    const secsLeft = Math.floor((balance / pricePerMin) * 60);
+    const h = Math.floor(secsLeft / 3600);
+    const m = Math.floor((secsLeft % 3600) / 60);
+    const s = secsLeft % 60;
+    if (h > 0) timeLeftEl.textContent = `${h}h ${m}m`;
+    else if (m > 0) timeLeftEl.textContent = `${m}m ${s}s`;
+    else timeLeftEl.textContent = `${s}s`;
+
+    // Đổi màu theo mức độ
+    if (secsLeft > 1800) { // > 30 phút
+      timeLeftEl.style.color = 'var(--green)';
+      timeLeftCard.style.borderColor = 'rgba(34,197,94,.2)';
+      timeLeftCard.style.background = 'rgba(34,197,94,.03)';
+    } else if (secsLeft > 300) { // > 5 phút
+      timeLeftEl.style.color = 'var(--yellow)';
+      timeLeftCard.style.borderColor = 'rgba(245,158,11,.2)';
+      timeLeftCard.style.background = 'rgba(245,158,11,.03)';
+    } else { // < 5 phút
+      timeLeftEl.style.color = 'var(--red)';
+      timeLeftCard.style.borderColor = 'rgba(239,68,68,.2)';
+      timeLeftCard.style.background = 'rgba(239,68,68,.03)';
+    }
+  } else {
+    timeLeftEl.textContent = '0s';
+    timeLeftEl.style.color = 'var(--red)';
+  }
 
   // Warning nếu còn dưới 5 phút
   const warning = document.getElementById('warning-overlay');
