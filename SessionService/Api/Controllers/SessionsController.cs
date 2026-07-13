@@ -31,6 +31,7 @@ public class SessionsController : ControllerBase
     }
 
     [HttpGet("active/{userId:guid}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetActive(Guid userId)
     {
         var result = await _mediator.Send(new GetActiveSessionQuery(userId));
