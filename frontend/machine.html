@@ -295,15 +295,8 @@ async function checkPhone() {
   try {
     // Tìm user bằng SĐT qua internal (cần login tạm để lấy token)
     // Dùng endpoint public check
-    const res = await fetch(`${API.auth}/auth/users/by-phone/${phone}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('m_token') || ''}` }
-    });
-
-    if (res.status === 401) {
-      // Cần login admin để check - dùng token lưu sẵn
-      errEl.textContent = 'Không thể xác thực. Liên hệ nhân viên.';
-      return;
-    }
+    // Dùng public endpoint - không cần token
+    const res = await fetch(`${API.auth}/auth/machine/check-phone/${phone}`);
 
     if (!res.ok) {
       errEl.textContent = 'Không tìm thấy tài khoản với SĐT này';

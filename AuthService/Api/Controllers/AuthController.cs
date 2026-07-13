@@ -59,12 +59,23 @@ public class AuthController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }
 
-    // API tìm user bằng SĐT - dùng khi mở phiên chơi
+    // API tìm user bằng SĐT - dùng khi mở phiên chơi (Staff/Admin)
     [HttpGet("users/by-phone/{phone}")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> GetUserByPhone(string phone)
     {
         var result = await _mediator.Send(new GetUserByPhoneQuery(phone));
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
+    }
+
+    // Public endpoint - machine.html dùng để check SĐT không cần token
+    [HttpGet("machine/check-phone/{phone}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> CheckPhonePublic(string phone)
+    {
+        var result = await _mediator.Send(new GetUserByPhoneQuery(phone));
+        if (!result.IsSuccess) return NotFound("Không tìm thấy tài khoản");
+        // Chỉ trả về thông tin cần thiết, không trả role/status nhạy cảm
+        return Ok(new { id = result.Data!.Id, fullName = result.Data.FullName, phone = result.Data.Phone });
     }
 }
