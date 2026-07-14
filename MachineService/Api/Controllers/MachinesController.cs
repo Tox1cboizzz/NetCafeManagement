@@ -59,4 +59,13 @@ public class MachinesController : ControllerBase
         var result = await _mediator.Send(new ReleaseMachineCommand(id));
         return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
     }
+
+    // Internal release - không cần auth, gọi từ SessionService
+    [HttpPost("{id:guid}/internal-release")]
+    [AllowAnonymous]
+    public async Task<IActionResult> InternalRelease(Guid id)
+    {
+        var result = await _mediator.Send(new ReleaseMachineCommand(id));
+        return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
+    }
 }

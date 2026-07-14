@@ -68,6 +68,22 @@ public class AuthController : ControllerBase
         return result.IsSuccess ? Ok(result.Data) : NotFound(result.Error);
     }
 
+    [HttpPost("users/{id:guid}/ban")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> BanUser(Guid id)
+    {
+        var result = await _mediator.Send(new BanUserCommand(id));
+        return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
+    }
+
+    [HttpPost("users/{id:guid}/unban")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UnbanUser(Guid id)
+    {
+        var result = await _mediator.Send(new UnbanUserCommand(id));
+        return result.IsSuccess ? Ok(result.Data) : BadRequest(result.Error);
+    }
+
     // Public endpoint - machine.html dùng để check SĐT không cần token
     [HttpGet("machine/check-phone/{phone}")]
     [AllowAnonymous]

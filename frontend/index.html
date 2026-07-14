@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>NetCafe Manager</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 :root{--bg:#0d0f14;--surface:#151820;--surface2:#1c2030;--border:#252a3a;--accent:#4f8eff;--accent2:#7c5cfc;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--text:#e2e8f0;--muted:#64748b;--mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;}
@@ -33,6 +34,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
 .btn-accent{background:rgba(79,142,255,.15);color:var(--accent);border:1px solid rgba(79,142,255,.3);}
 .btn-yellow{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.3);}
+.btn-purple{background:rgba(124,92,252,.15);color:var(--accent2);border:1px solid rgba(124,92,252,.3);}
 #app{display:none;height:100vh;}
 .layout{display:flex;height:100vh;}
 .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
@@ -43,6 +45,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14
 .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;}
 .nav-item:hover{background:var(--surface2);color:var(--text);}
 .nav-item.active{background:rgba(79,142,255,.12);color:var(--accent);}
+.nav-section{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:8px 12px 4px;margin-top:8px;}
 .sidebar-footer{padding:12px 8px;border-top:1px solid var(--border);}
 .user-card{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;}
 .user-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;}
@@ -104,10 +107,12 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .section-title:first-child{margin-top:0;}
 .empty-state{text-align:center;padding:48px;color:var(--muted);}
 .empty-state .icon{font-size:40px;margin-bottom:12px;}
-.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
-.info-row:last-child{border-bottom:none;}
-.info-row .key{color:var(--muted);}
-.info-row .val{font-weight:600;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+.chart-card h3{font-size:14px;font-weight:600;margin-bottom:16px;}
+.role-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;}
+.role-admin{background:rgba(239,68,68,.12);color:var(--red);}
+.role-staff{background:rgba(79,142,255,.12);color:var(--accent);}
+.role-customer{background:rgba(34,197,94,.12);color:var(--green);}
 </style>
 </head>
 <body>
@@ -123,6 +128,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <div class="form-group"><label>Tên đăng nhập</label><input type="text" id="login-username" placeholder="admin" /></div>
     <div class="form-group"><label>Mật khẩu</label><input type="password" id="login-password" placeholder="••••••••" /></div>
     <button class="btn btn-primary" onclick="login()">Đăng nhập</button>
+    <div id="login-error" style="color:var(--red);font-size:13px;margin-top:12px;text-align:center"></div>
   </div>
 </div>
 
@@ -130,13 +136,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
   <div class="layout">
     <div class="sidebar">
       <div class="sidebar-logo"><div class="logo-icon">🖥️</div><span>NetCafe</span></div>
-      <nav class="sidebar-nav">
-        <button class="nav-item active" onclick="goto('dashboard')"><span>📊</span> Dashboard</button>
-        <button class="nav-item" onclick="goto('machines')"><span>🖥️</span> Máy tính</button>
-        <button class="nav-item" onclick="goto('customers')"><span>👥</span> Khách hàng</button>
-        <button class="nav-item" onclick="goto('sessions')"><span>⏱️</span> Phiên chơi</button>
-        <button class="nav-item" onclick="goto('food')"><span>🍜</span> Đồ ăn</button>
-      </nav>
+      <nav class="sidebar-nav" id="sidebar-nav"></nav>
       <div class="sidebar-footer">
         <div class="user-card">
           <div class="user-avatar" id="sidebar-avatar">A</div>
@@ -154,18 +154,18 @@ tr:hover td{background:rgba(255,255,255,.02);}
           <div class="stats-grid">
             <div class="stat-card green"><div class="label">Máy đang dùng</div><div class="value" id="stat-inuse">0</div><div class="sub">/ <span id="stat-total">0</span> máy</div></div>
             <div class="stat-card blue"><div class="label">Phiên hôm nay</div><div class="value" id="stat-sessions">0</div><div class="sub">tổng phiên</div></div>
-            <div class="stat-card yellow"><div class="label">Doanh thu thực tế</div><div class="value" id="stat-revenue">0đ</div><div class="sub">hôm nay (incl. đang chơi)</div></div>
+            <div class="stat-card yellow"><div class="label">Doanh thu hôm nay</div><div class="value" id="stat-revenue">0đ</div><div class="sub">incl. đang chơi</div></div>
             <div class="stat-card purple"><div class="label">Khách hàng</div><div class="value" id="stat-customers">0</div><div class="sub">tài khoản</div></div>
-          </div>
-          <div class="section-title">Lịch sử phiên hôm nay</div>
-          <div class="table-card">
-            <table><thead><tr><th>Bắt đầu</th><th>Kết thúc</th><th>Máy</th><th>Chi phí chơi</th><th>Trạng thái</th></tr></thead>
-            <tbody id="dashboard-sessions"></tbody></table>
           </div>
           <div class="section-title">Trạng thái máy</div>
           <div class="table-card">
             <table><thead><tr><th>Máy</th><th>Loại</th><th>Khách (SĐT)</th><th>Vào lúc</th><th>Giá/h</th><th>Trạng thái</th></tr></thead>
             <tbody id="dashboard-machines"></tbody></table>
+          </div>
+          <div class="section-title">Lịch sử phiên hôm nay</div>
+          <div class="table-card">
+            <table><thead><tr><th>Bắt đầu</th><th>Kết thúc</th><th>Chi phí</th><th>Trạng thái</th></tr></thead>
+            <tbody id="dashboard-sessions"></tbody></table>
           </div>
         </div>
 
@@ -177,16 +177,42 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <!-- CUSTOMERS -->
         <div class="page" id="page-customers">
           <div class="table-card">
-            <table><thead><tr><th>Họ tên</th><th>Username</th><th>SĐT</th><th>Tier</th><th>Số dư</th><th>Trạng thái</th></tr></thead>
+            <table><thead><tr><th>Họ tên</th><th>Username</th><th>SĐT</th><th>Tier</th><th>Số dư</th><th>Trạng thái</th><th id="customers-action-header"></th></tr></thead>
             <tbody id="customers-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- STAFF (Admin only) -->
+        <div class="page" id="page-staff">
+          <div class="table-card">
+            <table><thead><tr><th>Họ tên</th><th>Username</th><th>SĐT</th><th>Role</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+            <tbody id="staff-table"></tbody></table>
           </div>
         </div>
 
         <!-- SESSIONS -->
         <div class="page" id="page-sessions">
           <div class="table-card">
-            <table><thead><tr><th>Bắt đầu</th><th>Kết thúc</th><th>Chi phí chơi</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+            <table><thead><tr><th>Bắt đầu</th><th>Kết thúc</th><th>Máy</th><th>Chi phí</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
             <tbody id="sessions-table"></tbody></table>
+          </div>
+        </div>
+
+        <!-- REPORTS (Admin only) -->
+        <div class="page" id="page-reports">
+          <div class="stats-grid">
+            <div class="stat-card green"><div class="label">Doanh thu tháng này</div><div class="value" id="r-month">0đ</div></div>
+            <div class="stat-card blue"><div class="label">Doanh thu năm này</div><div class="value" id="r-year">0đ</div></div>
+            <div class="stat-card yellow"><div class="label">Tổng phiên tháng này</div><div class="value" id="r-sessions">0</div></div>
+            <div class="stat-card purple"><div class="label">TB doanh thu/ngày</div><div class="value" id="r-avg">0đ</div></div>
+          </div>
+          <div class="chart-card">
+            <h3>📊 Doanh thu theo tháng</h3>
+            <canvas id="revenue-chart" height="80"></canvas>
+          </div>
+          <div class="chart-card">
+            <h3>📈 Số phiên chơi theo tháng</h3>
+            <canvas id="sessions-chart" height="80"></canvas>
           </div>
         </div>
 
@@ -212,13 +238,12 @@ tr:hover td{background:rgba(255,255,255,.02);}
   </div>
 </div>
 
-<!-- SỬA GIÁ MÁY -->
 <div class="modal-overlay" id="modal-update-price">
   <div class="modal">
     <h3>✏️ Sửa giá máy</h3>
     <div id="update-price-info" style="background:var(--surface2);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;color:var(--muted)"></div>
-    <div class="form-group"><label>Giá mới (VNĐ/giờ)</label><input id="up-price" type="number" placeholder="15000" /></div>
-    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('modal-update-price')">Huỷ</button><button class="btn btn-yellow" onclick="submitUpdatePrice()">Cập nhật giá</button></div>
+    <div class="form-group"><label>Giá mới (VNĐ/giờ)</label><input id="up-price" type="number" /></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('modal-update-price')">Huỷ</button><button class="btn btn-yellow" onclick="submitUpdatePrice()">Cập nhật</button></div>
   </div>
 </div>
 
@@ -233,7 +258,17 @@ tr:hover td{background:rgba(255,255,255,.02);}
   </div>
 </div>
 
-<!-- MỞ PHIÊN BẰNG SĐT -->
+<div class="modal-overlay" id="modal-staff">
+  <div class="modal">
+    <h3>👔 Tạo tài khoản Staff</h3>
+    <div class="form-group"><label>Username</label><input id="st-username" placeholder="staff01" /></div>
+    <div class="form-group"><label>Mật khẩu</label><input id="st-password" type="password" /></div>
+    <div class="form-group"><label>Họ tên</label><input id="st-fullname" placeholder="Nguyễn Văn B" /></div>
+    <div class="form-group"><label>Số điện thoại</label><input id="st-phone" placeholder="0912345678" /></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal('modal-staff')">Huỷ</button><button class="btn btn-primary" onclick="addStaff()">Tạo</button></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-session">
   <div class="modal">
     <h3>⏱️ Mở phiên chơi</h3>
@@ -273,398 +308,517 @@ tr:hover td{background:rgba(255,255,255,.02);}
 </div>
 
 <script>
-const API = {
-  auth:    'http://localhost:5001/api',
-  wallet:  'http://localhost:5002/api',
-  machine: 'http://localhost:5003/api',
-  session: 'http://localhost:5004/api',
-  food:    'http://localhost:5005/api',
-};
-let token = localStorage.getItem('token') || '';
-let currentUser = JSON.parse(localStorage.getItem('user') || 'null');
-let selectedCustomer = null;
-let updatePriceMachineId = null;
+const API={auth:'http://localhost:5001/api',wallet:'http://localhost:5002/api',machine:'http://localhost:5003/api',session:'http://localhost:5004/api',food:'http://localhost:5005/api'};
+let token=localStorage.getItem('token')||'';
+let currentUser=JSON.parse(localStorage.getItem('user')||'null');
+let selectedCustomer=null;
+let updatePriceMachineId=null;
+let revenueChart=null;
+let sessionsChart=null;
 
-async function http(service, path, method='GET', body=null) {
-  const opts = { method, headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } };
-  if (body) opts.body = JSON.stringify(body);
-  const res = await fetch(API[service] + path, opts);
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
+// ── HELPERS ──
+const isAdmin=()=>currentUser?.role==='Admin';
+const isStaff=()=>currentUser?.role==='Staff';
+const isAdminOrStaff=()=>isAdmin()||isStaff();
+
+async function http(service,path,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})}};
+  if(body)opts.body=JSON.stringify(body);
+  const res=await fetch(API[service]+path,opts);
+  const text=await res.text();
+  const data=text?JSON.parse(text):null;
+  if(!res.ok)throw new Error(typeof data==='string'?data:JSON.stringify(data));
   return data;
 }
 
-function toast(msg, type='success') {
-  const el = document.createElement('div');
-  el.className = `toast-item ${type}`;
-  el.textContent = msg;
+function toast(msg,type='success'){
+  const el=document.createElement('div');
+  el.className=`toast-item ${type}`;el.textContent=msg;
   document.getElementById('toast').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  setTimeout(()=>el.remove(),3500);
 }
 
-async function login() {
-  const username = document.getElementById('login-username').value.trim();
-  const password = document.getElementById('login-password').value;
-  if (!username || !password) return toast('Nhập đủ thông tin', 'error');
-  try {
-    const data = await http('auth', '/auth/login', 'POST', { username, password });
-    token = data.accessToken;
-    currentUser = data.user;
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(currentUser));
+function fmt(n){return Number(n).toLocaleString('vi-VN')+'đ';}
+function fmtTime(dt){if(!dt)return'—';return new Date(dt).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});}
+
+function statusBadge(s){
+  const m={Available:['green','Trống'],InUse:['red','Đang dùng'],Maintenance:['yellow','Bảo trì'],Active:['green','Đang chơi'],Banned:['red','Bị khoá'],Closed:['blue','Đã đóng']};
+  const[cls,label]=m[s]||['blue',s];
+  return`<span class="badge ${cls}">${label}</span>`;
+}
+
+// ── AUTH ──
+async function login(){
+  const username=document.getElementById('login-username').value.trim();
+  const password=document.getElementById('login-password').value;
+  const errEl=document.getElementById('login-error');
+  errEl.textContent='';
+  if(!username||!password)return(errEl.textContent='Nhập đủ thông tin');
+  try{
+    const data=await http('auth','/auth/login','POST',{username,password});
+    // Chặn Customer đăng nhập vào trang quản lý
+    if(data.user.role==='Customer'){
+      errEl.textContent='Tài khoản khách hàng không có quyền truy cập trang này';
+      return;
+    }
+    token=data.accessToken;currentUser=data.user;
+    localStorage.setItem('token',token);localStorage.setItem('user',JSON.stringify(currentUser));
     showApp();
-  } catch(e) { toast('Sai tên đăng nhập hoặc mật khẩu', 'error'); }
+  }catch(e){errEl.textContent='Sai tên đăng nhập hoặc mật khẩu';}
 }
 
-function logout() {
-  token = ''; currentUser = null;
-  localStorage.removeItem('token'); localStorage.removeItem('user');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-page').style.display = 'flex';
+function logout(){
+  token='';currentUser=null;
+  localStorage.removeItem('token');localStorage.removeItem('user');
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-page').style.display='flex';
 }
 
-function showApp() {
-  document.getElementById('login-page').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('sidebar-name').textContent = currentUser?.fullName || 'User';
-  document.getElementById('sidebar-role').textContent = currentUser?.role || 'Staff';
-  document.getElementById('sidebar-avatar').textContent = (currentUser?.fullName || 'U')[0].toUpperCase();
+function showApp(){
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('sidebar-name').textContent=currentUser.fullName;
+  document.getElementById('sidebar-role').textContent=currentUser.role==='Admin'?'Quản trị viên':'Nhân viên';
+  document.getElementById('sidebar-avatar').textContent=currentUser.fullName[0].toUpperCase();
+  buildSidebar();
   goto('dashboard');
 }
 
-function getPageActions(page) {
-  const isAdmin = currentUser?.role === 'Admin';
-  const isStaff = currentUser?.role === 'Staff';
-  switch(page) {
-    case 'dashboard': return `<button class="btn btn-sm btn-ghost" onclick="loadDashboard()">🔄 Refresh</button>`;
-    case 'machines':  return isAdmin
-      ? `<button class="btn btn-sm btn-accent" onclick="openModal('modal-machine')">+ Thêm máy</button>`
-      : `<span style="font-size:12px;color:var(--muted)">Chỉ Admin mới thêm máy được</span>`;
-    case 'customers': return `<button class="btn btn-sm btn-accent" onclick="openModal('modal-customer')">+ Tạo tài khoản</button><button class="btn btn-sm btn-success" onclick="openTopUp()">💰 Nạp tiền</button>`;
-    case 'sessions':  return `<button class="btn btn-sm btn-success" onclick="openStartSession()">▶ Mở phiên</button>`;
-    case 'food':      return isAdmin
-      ? `<button class="btn btn-sm btn-accent" onclick="openModal('modal-food')">+ Thêm món</button>`
-      : ``;
-    default: return '';
+// ── SIDEBAR theo role ──
+function buildSidebar(){
+  const nav=document.getElementById('sidebar-nav');
+  let html=`
+    <div class="nav-section">Vận hành</div>
+    <button class="nav-item" onclick="goto('dashboard')"><span>📊</span> Dashboard</button>
+    <button class="nav-item" onclick="goto('machines')"><span>🖥️</span> Máy tính</button>
+    <button class="nav-item" onclick="goto('sessions')"><span>⏱️</span> Phiên chơi</button>
+    <button class="nav-item" onclick="goto('customers')"><span>👥</span> Khách hàng</button>
+    <button class="nav-item" onclick="goto('food')"><span>🍜</span> Đồ ăn</button>`;
+
+  if(isAdmin()){
+    html+=`
+    <div class="nav-section">Quản trị</div>
+    <button class="nav-item" onclick="goto('staff')"><span>👔</span> Nhân viên</button>
+    <button class="nav-item" onclick="goto('reports')"><span>📈</span> Báo cáo</button>`;
+  }
+  nav.innerHTML=html;
+}
+
+// ── NAVIGATION ──
+const pageTitles={dashboard:'Dashboard',machines:'Quản lý máy',customers:'Khách hàng',staff:'Quản lý nhân viên',sessions:'Phiên chơi',reports:'Báo cáo doanh thu',food:'Đồ ăn & Nước'};
+const pageLoaders={dashboard:loadDashboard,machines:loadMachines,customers:loadCustomers,staff:loadStaff,sessions:loadSessions,reports:loadReports,food:loadFood};
+
+function getActions(page){
+  switch(page){
+    case'dashboard':return`<button class="btn btn-sm btn-ghost" onclick="loadDashboard()">🔄 Refresh</button>`;
+    case'machines':return isAdmin()?`<button class="btn btn-sm btn-accent" onclick="openModal('modal-machine')">+ Thêm máy</button>`:'';
+    case'customers':return`<button class="btn btn-sm btn-accent" onclick="openModal('modal-customer')">+ Tạo khách</button><button class="btn btn-sm btn-success" onclick="openTopUp()">💰 Nạp tiền</button>`;
+    case'staff':return isAdmin()?`<button class="btn btn-sm btn-purple" onclick="openModal('modal-staff')">+ Thêm nhân viên</button>`:'';
+    case'sessions':return`<button class="btn btn-sm btn-success" onclick="openStartSession()">▶ Mở phiên</button>`;
+    case'food':return isAdmin()?`<button class="btn btn-sm btn-accent" onclick="openModal('modal-food')">+ Thêm món</button>`:'';
+    default:return'';
   }
 }
 
-const pages = {
-  dashboard: { title:'Dashboard', load:loadDashboard },
-  machines:  { title:'Quản lý máy', load:loadMachines },
-  customers: { title:'Khách hàng', load:loadCustomers },
-  sessions:  { title:'Phiên chơi', load:loadSessions },
-  food:      { title:'Đồ ăn & Nước', load:loadFood },
-};
-
-function goto(page) {
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  document.querySelector(`[onclick="goto('${page}')"]`).classList.add('active');
-  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
-  document.getElementById(`page-${page}`).classList.add('active');
-  document.getElementById('page-title').textContent = pages[page].title;
-  document.getElementById('topbar-actions').innerHTML = getPageActions(page);
-  pages[page].load();
+function goto(page){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const btn=document.querySelector(`[onclick="goto('${page}')"]`);
+  if(btn)btn.classList.add('active');
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  const pageEl=document.getElementById(`page-${page}`);
+  if(pageEl)pageEl.classList.add('active');
+  document.getElementById('page-title').textContent=pageTitles[page]||page;
+  document.getElementById('topbar-actions').innerHTML=getActions(page);
+  if(pageLoaders[page])pageLoaders[page]();
 }
 
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', e => { if(e.target===el) el.classList.remove('open'); }));
-
-function fmt(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
-function fmtTime(dt) { if (!dt) return '—'; const d = new Date(dt); return d.toLocaleTimeString('vi-VN', {hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
-function statusBadge(s) {
-  const m = { Available:['green','Trống'], InUse:['red','Đang dùng'], Maintenance:['yellow','Bảo trì'], Active:['green','Đang chơi'], Banned:['red','Bị khoá'], Closed:['blue','Đã đóng'] };
-  const [cls,label] = m[s] || ['blue',s];
-  return `<span class="badge ${cls}">${label}</span>`;
-}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
 
 // ── DASHBOARD ──
-async function loadDashboard() {
-  try {
-    const [machines, users] = await Promise.all([http('machine','/machines'), http('auth','/auth/users')]);
-    const inuse = machines.filter(m=>m.status==='InUse').length;
-    document.getElementById('stat-inuse').textContent = inuse;
-    document.getElementById('stat-total').textContent = machines.length;
-    document.getElementById('stat-customers').textContent = users.filter(u=>u.role==='Customer').length;
+async function loadDashboard(){
+  try{
+    const machines=await http('machine','/machines');
+    const users=await http('auth','/auth/users');
+    const inuse=machines.filter(m=>m.status==='InUse').length;
+    document.getElementById('stat-inuse').textContent=inuse;
+    document.getElementById('stat-total').textContent=machines.length;
+    document.getElementById('stat-customers').textContent=users.filter(u=>u.role==='Customer').length;
 
-    // Revenue + sessions từ SessionService
-    try {
-      const [revenue, sessions] = await Promise.all([
-        http('session','/sessions/revenue'),
-        http('session','/sessions/history')
-      ]);
-      document.getElementById('stat-revenue').textContent = fmt(revenue.totalRevenue);
-      document.getElementById('stat-sessions').textContent = revenue.totalSessions;
+    try{
+      const[revenue,sessions]=await Promise.all([http('session','/sessions/revenue'),http('session','/sessions/history')]);
+      document.getElementById('stat-revenue').textContent=fmt(revenue.totalRevenue);
+      document.getElementById('stat-sessions').textContent=revenue.totalSessions;
+      document.getElementById('dashboard-sessions').innerHTML=sessions.length
+        ?sessions.map(s=>`<tr><td style="font-family:var(--mono);font-size:12px">${fmtTime(s.startTime)}</td><td style="font-family:var(--mono);font-size:12px">${fmtTime(s.endTime)}</td><td style="font-family:var(--mono);color:var(--accent)">${fmt(s.totalCost)}</td><td>${statusBadge(s.status)}</td></tr>`).join('')
+        :'<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Chưa có phiên nào hôm nay</td></tr>';
+    }catch(e){document.getElementById('stat-revenue').textContent='—';}
 
-      // Session history table
-      const tbody = document.getElementById('dashboard-sessions');
-      tbody.innerHTML = sessions.length
-        ? sessions.map(s=>`<tr>
-            <td style="font-family:var(--mono);font-size:12px">${fmtTime(s.startTime)}</td>
-            <td style="font-family:var(--mono);font-size:12px">${fmtTime(s.endTime)}</td>
-            <td style="color:var(--muted);font-size:12px">${s.machineId.substring(0,8)}...</td>
-            <td style="font-family:var(--mono);color:var(--accent)">${fmt(s.totalCost)}</td>
-            <td>${statusBadge(s.status)}</td>
-          </tr>`).join('')
-        : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Chưa có phiên nào hôm nay</td></tr>';
-    } catch(e) {
-      document.getElementById('stat-revenue').textContent = '—';
-      document.getElementById('stat-sessions').textContent = '—';
-    }
-
-    // Machine status table
-    document.getElementById('dashboard-machines').innerHTML = machines.length
-      ? machines.map(m=>`<tr>
-          <td><strong>${m.name}</strong></td>
-          <td>${m.type}</td>
-          <td style="font-family:var(--mono);font-size:12px">${m.currentUserPhone || '—'}</td>
-          <td style="font-size:12px;color:var(--yellow)">${m.sessionStartTime ? fmtTime(m.sessionStartTime) : '—'}</td>
-          <td style="font-family:var(--mono)">${fmt(m.pricePerHour)}</td>
-          <td>${statusBadge(m.status)}</td>
-        </tr>`).join('')
-      : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Chưa có máy nào</td></tr>';
-  } catch(e) { toast('Không tải được dashboard', 'error'); }
+    document.getElementById('dashboard-machines').innerHTML=machines.length
+      ?machines.map(m=>`<tr><td><strong>${m.name}</strong></td><td>${m.type}</td><td style="font-family:var(--mono)">${m.currentUserPhone||'—'}</td><td style="color:var(--yellow);font-size:12px">${m.sessionStartTime?fmtTime(m.sessionStartTime):'—'}</td><td style="font-family:var(--mono)">${fmt(m.pricePerHour)}</td><td>${statusBadge(m.status)}</td></tr>`).join('')
+      :'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Chưa có máy nào</td></tr>';
+  }catch(e){toast('Không tải được dashboard','error');}
 }
 
 // ── MACHINES ──
-async function loadMachines() {
-  try {
-    const machines = await http('machine','/machines');
-    const grid = document.getElementById('machine-grid');
-    if (!machines.length) { grid.innerHTML=`<div class="empty-state"><div class="icon">🖥️</div><p>Chưa có máy nào</p></div>`; return; }
-    grid.innerHTML = machines.map(m=>`
+async function loadMachines(){
+  try{
+    const machines=await http('machine','/machines');
+    const grid=document.getElementById('machine-grid');
+    if(!machines.length){grid.innerHTML=`<div class="empty-state"><div class="icon">🖥️</div><p>Chưa có máy nào</p></div>`;return;}
+    grid.innerHTML=machines.map(m=>`
       <div class="machine-card ${m.status.toLowerCase()}">
         <div class="machine-name">🖥️ ${m.name}</div>
         <div class="machine-type">${m.type==='Premium'?'⭐ Premium':'💻 Normal'}</div>
         ${statusBadge(m.status)}
         <div class="machine-price" style="margin-top:8px">${fmt(m.pricePerHour)}/h</div>
-        ${m.currentUserPhone ? `<div class="machine-user">📞 ${m.currentUserPhone}</div>` : ''}
-        ${m.sessionStartTime ? `<div class="machine-time">🕐 ${fmtTime(m.sessionStartTime)}</div>` : ''}
+        ${m.currentUserPhone?`<div class="machine-user">📞 ${m.currentUserPhone}</div>`:''}
+        ${m.sessionStartTime?`<div class="machine-time">🕐 ${fmtTime(m.sessionStartTime)}</div>`:''}
         <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
-          ${currentUser?.role==='Admin'?`<button class="btn btn-sm btn-yellow" onclick="openUpdatePrice('${m.id}','${m.name}',${m.pricePerHour})">✏️ Sửa giá</button>`:''}
+          ${isAdmin()?`<button class="btn btn-sm btn-yellow" onclick="openUpdatePrice('${m.id}','${m.name}',${m.pricePerHour})">✏️ Giá</button>`:''}
           ${m.status==='Available'?`<button class="btn btn-sm btn-success" onclick="openSessionFromMachine('${m.id}',${m.pricePerHour})">▶ Dùng</button>`:''}
-          ${m.status==='InUse'?`<button class="btn btn-sm btn-danger" onclick="releaseMachine('${m.id}')">■ Giải phóng</button>`:''}
+          ${m.status==='InUse'?`<button class="btn btn-sm btn-danger" onclick="closeSessionByMachine('${m.id}','${m.currentUserId}')">■ Đóng</button>`:''}
         </div>
       </div>`).join('');
-  } catch(e) { toast('Không kết nối MachineService', 'error'); }
+  }catch(e){toast('Không kết nối MachineService','error');}
 }
 
-async function addMachine() {
+async function addMachine(){
   const name=document.getElementById('m-name').value.trim();
   const type=document.getElementById('m-type').value;
   const price=Number(document.getElementById('m-price').value);
   const specs=document.getElementById('m-specs').value.trim();
-  if (!name||!price) return toast('Nhập đủ thông tin','error');
-  try {
-    await http('machine','/machines','POST',{name,type,pricePerHour:price,specs});
-    toast('Thêm máy thành công!'); closeModal('modal-machine'); loadMachines();
-  } catch(e) { toast('Lỗi: '+e.message,'error'); }
+  if(!name||!price)return toast('Nhập đủ thông tin','error');
+  try{await http('machine','/machines','POST',{name,type,pricePerHour:price,specs});toast('Thêm máy thành công!');closeModal('modal-machine');loadMachines();}
+  catch(e){toast('Lỗi: '+e.message,'error');}
 }
 
-function openUpdatePrice(id, name, currentPrice) {
-  updatePriceMachineId = id;
-  document.getElementById('update-price-info').textContent = `${name} — Giá hiện tại: ${fmt(currentPrice)}/h`;
-  document.getElementById('up-price').value = currentPrice;
+function openUpdatePrice(id,name,currentPrice){
+  updatePriceMachineId=id;
+  document.getElementById('update-price-info').textContent=`${name} — Giá hiện tại: ${fmt(currentPrice)}/h`;
+  document.getElementById('up-price').value=currentPrice;
   openModal('modal-update-price');
 }
 
-async function submitUpdatePrice() {
-  const price = Number(document.getElementById('up-price').value);
-  if (!price || price <= 0) return toast('Nhập giá hợp lệ', 'error');
-  try {
-    await http('machine', `/machines/${updatePriceMachineId}/price`, 'PUT', { pricePerHour: price });
-    toast('Cập nhật giá thành công!'); closeModal('modal-update-price'); loadMachines();
-  } catch(e) { toast('Lỗi: '+e.message, 'error'); }
+async function submitUpdatePrice(){
+  const price=Number(document.getElementById('up-price').value);
+  if(!price||price<=0)return toast('Nhập giá hợp lệ','error');
+  try{await http('machine',`/machines/${updatePriceMachineId}/price`,'PUT',{pricePerHour:price});toast('Cập nhật giá thành công!');closeModal('modal-update-price');loadMachines();}
+  catch(e){toast('Lỗi: '+e.message,'error');}
 }
 
-async function releaseMachine(id) {
-  try { await http('machine',`/machines/${id}/release`,'POST'); toast('Đã giải phóng máy!'); loadMachines(); }
-  catch(e) { toast('Lỗi: '+e.message,'error'); }
+// Đóng phiên khi bấm từ máy - đóng session + release machine cùng lúc
+async function closeSessionByMachine(machineId, userId){
+  if(!confirm('Xác nhận đóng phiên và giải phóng máy?'))return;
+  try{
+    // Tìm session active của user
+    const session=await http('session',`/sessions/active/${userId}`);
+    // Đóng session → SessionService tự release machine
+    await http('session',`/sessions/${session.id}/close`,'POST',{foodCost:0});
+    toast('Đã đóng phiên và giải phóng máy!');
+    loadMachines();
+  }catch(e){
+    // Nếu không tìm được session thì release machine trực tiếp
+    await http('machine',`/machines/${machineId}/release`,'POST');
+    toast('Đã giải phóng máy!');
+    loadMachines();
+  }
 }
 
 // ── CUSTOMERS ──
-async function loadCustomers() {
-  try {
-    const users = await http('auth','/auth/users');
-    const customers = users.filter(u=>u.role==='Customer');
-    const wallets = await Promise.allSettled(customers.map(u=>http('wallet',`/wallet/${u.id}`)));
-    document.getElementById('customers-table').innerHTML = customers.length
-      ? customers.map((u,i)=>{
-          const w = wallets[i].status==='fulfilled'?wallets[i].value:null;
-          return `<tr>
+async function loadCustomers(){
+  try{
+    const users=await http('auth','/auth/users');
+    const customers=users.filter(u=>u.role==='Customer');
+    document.getElementById('customers-action-header').textContent=isAdmin()?'Thao tác':'';
+    const wallets=await Promise.allSettled(customers.map(u=>http('wallet',`/wallet/${u.id}`)));
+    document.getElementById('customers-table').innerHTML=customers.length
+      ?customers.map((u,i)=>{
+          const w=wallets[i].status==='fulfilled'?wallets[i].value:null;
+          return`<tr>
             <td><strong>${u.fullName}</strong></td>
             <td style="font-family:var(--mono);font-size:12px">${u.username}</td>
             <td style="font-family:var(--mono)">${u.phone||'—'}</td>
             <td>${w?`<span class="badge ${w.memberTier==='VIP'?'purple':'blue'}">${w.memberTier}</span>`:'—'}</td>
             <td style="font-family:var(--mono)">${w?fmt(w.balance):'—'}</td>
             <td>${statusBadge(u.status)}</td>
+            <td>${isAdmin()?(u.status==='Active'
+              ?`<button class="btn btn-sm btn-danger" onclick="banUser('${u.id}')">🚫 Ban</button>`
+              :`<button class="btn btn-sm btn-success" onclick="unbanUser('${u.id}')">✅ Unban</button>`)
+              :'—'}</td>
           </tr>`;
         }).join('')
-      : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Chưa có khách hàng</td></tr>';
-  } catch(e) { toast('Không kết nối AuthService','error'); }
+      :'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Chưa có khách hàng</td></tr>';
+  }catch(e){toast('Không kết nối AuthService','error');}
 }
 
-async function addCustomer() {
+async function addCustomer(){
   const username=document.getElementById('c-username').value.trim();
   const password=document.getElementById('c-password').value;
   const fullName=document.getElementById('c-fullname').value.trim();
   const phone=document.getElementById('c-phone').value.trim();
-  if (!username||!password||!fullName||!phone) return toast('Nhập đủ thông tin','error');
-  try {
-    const user = await http('auth','/auth/register','POST',{username,password,fullName,phone,role:'Customer'});
+  if(!username||!password||!fullName||!phone)return toast('Nhập đủ thông tin','error');
+  if(phone.length<9||phone.length>11)return toast('SĐT không hợp lệ','error');
+  try{
+    const user=await http('auth','/auth/register','POST',{username,password,fullName,phone,role:'Customer'});
     await http('wallet','/wallet','POST',{userId:user.id});
-    toast('Tạo tài khoản thành công!'); closeModal('modal-customer'); loadCustomers();
-  } catch(e) { toast('Lỗi: '+e.message,'error'); }
+    toast('Tạo tài khoản thành công!');closeModal('modal-customer');loadCustomers();
+  }catch(e){toast('Lỗi: '+e.message,'error');}
 }
 
-async function openTopUp() {
-  const users = await http('auth','/auth/users');
-  const customers = users.filter(u=>u.role==='Customer');
-  document.getElementById('tu-customer').innerHTML = customers.map(u=>`<option value="${u.id}">${u.fullName} — ${u.phone}</option>`).join('');
+async function banUser(id){
+  if(!confirm('Xác nhận ban tài khoản này?'))return;
+  try{await http('auth',`/auth/users/${id}/ban`,'POST');toast('Đã ban tài khoản!');loadCustomers();}
+  catch(e){toast('Lỗi: '+e.message,'error');}
+}
+
+async function unbanUser(id){
+  try{await http('auth',`/auth/users/${id}/unban`,'POST');toast('Đã unban tài khoản!');loadCustomers();}
+  catch(e){toast('Lỗi: '+e.message,'error');}
+}
+
+async function openTopUp(){
+  const users=await http('auth','/auth/users');
+  const customers=users.filter(u=>u.role==='Customer'&&u.status==='Active');
+  document.getElementById('tu-customer').innerHTML=customers.map(u=>`<option value="${u.id}">${u.fullName} — ${u.phone}</option>`).join('');
   openModal('modal-topup');
 }
 
-async function topUp() {
+async function topUp(){
   const userId=document.getElementById('tu-customer').value;
   const amount=Number(document.getElementById('tu-amount').value);
-  if (!amount||amount<=0) return toast('Nhập số tiền hợp lệ','error');
-  try { await http('wallet','/wallet/topup','POST',{userId,amount}); toast(`Nạp ${fmt(amount)} thành công!`); closeModal('modal-topup'); loadCustomers(); }
-  catch(e) { toast('Lỗi: '+e.message,'error'); }
+  if(!amount||amount<=0)return toast('Nhập số tiền hợp lệ','error');
+  try{await http('wallet','/wallet/topup','POST',{userId,amount});toast(`Nạp ${fmt(amount)} thành công!`);closeModal('modal-topup');loadCustomers();}
+  catch(e){toast('Lỗi: '+e.message,'error');}
+}
+
+// ── STAFF (Admin only) ──
+async function loadStaff(){
+  if(!isAdmin()){toast('Không có quyền','error');return;}
+  try{
+    const users=await http('auth','/auth/users');
+    const staff=users.filter(u=>u.role==='Staff'||u.role==='Admin');
+    document.getElementById('staff-table').innerHTML=staff.length
+      ?staff.map(u=>`<tr>
+          <td><strong>${u.fullName}</strong></td>
+          <td style="font-family:var(--mono);font-size:12px">${u.username}</td>
+          <td style="font-family:var(--mono)">${u.phone||'—'}</td>
+          <td><span class="role-tag role-${u.role.toLowerCase()}">${u.role==='Admin'?'👑 Admin':'👔 Staff'}</span></td>
+          <td>${statusBadge(u.status)}</td>
+          <td>${u.role!=='Admin'?(u.status==='Active'
+            ?`<button class="btn btn-sm btn-danger" onclick="banUser('${u.id}')">🚫 Ban</button>`
+            :`<button class="btn btn-sm btn-success" onclick="unbanUser('${u.id}')">✅ Unban</button>`)
+            :'—'}</td>
+        </tr>`).join('')
+      :'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Chưa có nhân viên</td></tr>';
+  }catch(e){toast('Lỗi tải danh sách nhân viên','error');}
+}
+
+async function addStaff(){
+  const username=document.getElementById('st-username').value.trim();
+  const password=document.getElementById('st-password').value;
+  const fullName=document.getElementById('st-fullname').value.trim();
+  const phone=document.getElementById('st-phone').value.trim();
+  if(!username||!password||!fullName||!phone)return toast('Nhập đủ thông tin','error');
+  try{
+    await http('auth','/auth/register','POST',{username,password,fullName,phone,role:'Staff'});
+    toast('Tạo tài khoản Staff thành công!');closeModal('modal-staff');loadStaff();
+  }catch(e){toast('Lỗi: '+e.message,'error');}
 }
 
 // ── SESSIONS ──
-async function loadSessions() {
-  try {
-    const sessions = await http('session','/sessions/history');
-    document.getElementById('sessions-table').innerHTML = sessions.length
-      ? sessions.map(s=>`<tr>
+async function loadSessions(){
+  try{
+    const sessions=await http('session','/sessions/history');
+    document.getElementById('sessions-table').innerHTML=sessions.length
+      ?sessions.map(s=>`<tr>
           <td style="font-family:var(--mono);font-size:12px">${fmtTime(s.startTime)}</td>
           <td style="font-family:var(--mono);font-size:12px">${fmtTime(s.endTime)}</td>
+          <td style="color:var(--muted);font-size:12px">${s.machineId.substring(0,8)}...</td>
           <td style="font-family:var(--mono);color:var(--accent)">${fmt(s.totalCost)}</td>
           <td>${statusBadge(s.status)}</td>
-          <td>${s.status==='Active'?`<button class="btn btn-sm btn-danger" onclick="closeSession('${s.id}')">■ Đóng phiên</button>`:'—'}</td>
+          <td>${s.status==='Active'?`<button class="btn btn-sm btn-danger" onclick="closeSession('${s.id}')">■ Đóng</button>`:'—'}</td>
         </tr>`).join('')
-      : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Chưa có phiên nào hôm nay</td></tr>';
-  } catch(e) { toast('Lỗi tải sessions','error'); }
+      :'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Chưa có phiên nào</td></tr>';
+  }catch(e){toast('Lỗi tải sessions','error');}
 }
 
-async function closeSession(sessionId) {
-  try {
-    await http('session', `/sessions/${sessionId}/close`, 'POST', { foodCost: 0 });
-    toast('Đã đóng phiên!'); loadSessions(); loadDashboard();
-  } catch(e) { toast('Lỗi: '+e.message,'error'); }
+async function closeSession(sessionId){
+  if(!confirm('Xác nhận đóng phiên này?'))return;
+  try{
+    await http('session',`/sessions/${sessionId}/close`,'POST',{foodCost:0});
+    toast('Đã đóng phiên!');loadSessions();loadMachines();
+  }catch(e){toast('Lỗi: '+e.message,'error');}
 }
 
-// Tìm khách bằng SĐT
-async function lookupByPhone() {
-  const phone = document.getElementById('s-phone').value.trim();
-  if (!phone) return toast('Nhập SĐT trước','error');
-  try {
-    const user = await http('auth', `/auth/users/by-phone/${phone}`);
-    selectedCustomer = user;
-    const wallet = await http('wallet', `/wallet/${user.id}`);
-    document.getElementById('s-customer-info').style.display = 'block';
-    document.getElementById('s-customer-info').innerHTML = `
-      <div style="font-weight:600;color:var(--text);margin-bottom:6px">✅ Tìm thấy khách hàng</div>
-      <div style="display:flex;gap:20px;flex-wrap:wrap">
-        <span>👤 <strong>${user.fullName}</strong></span>
+async function lookupByPhone(){
+  const phone=document.getElementById('s-phone').value.trim();
+  if(!phone)return toast('Nhập SĐT trước','error');
+  try{
+    const user=await http('auth',`/auth/users/by-phone/${phone}`);
+    if(user.role!=='Customer')return toast('Chỉ khách hàng mới dùng máy được','error');
+    if(user.status==='Banned')return toast('Tài khoản này đang bị ban','error');
+    selectedCustomer=user;
+    const wallet=await http('wallet',`/wallet/${user.id}`);
+    document.getElementById('s-customer-info').style.display='block';
+    document.getElementById('s-customer-info').innerHTML=`
+      <div style="font-weight:600;color:var(--text);margin-bottom:6px">✅ ${user.fullName}</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
         <span>📞 ${user.phone}</span>
         <span>💰 Số dư: <strong style="color:var(--green)">${fmt(wallet.balance)}</strong></span>
-        <span>${wallet.memberTier === 'VIP' ? '<span class="badge purple">⭐ VIP -5%</span>' : '<span class="badge blue">Normal</span>'}</span>
+        <span>${wallet.memberTier==='VIP'?'<span class="badge purple">⭐ VIP -5%</span>':'<span class="badge blue">Normal</span>'}</span>
       </div>`;
     toast(`Tìm thấy: ${user.fullName}`);
-  } catch(e) { 
-    selectedCustomer = null;
-    document.getElementById('s-customer-info').style.display = 'none';
-    toast('Không tìm thấy khách với SĐT này','error'); 
-  }
+  }catch(e){selectedCustomer=null;document.getElementById('s-customer-info').style.display='none';toast('Không tìm thấy khách với SĐT này','error');}
 }
 
-let sessionMachineId = null;
-let sessionMachinePrice = null;
-
-async function openStartSession() {
-  sessionMachineId = null;
-  sessionMachinePrice = null;
+async function openStartSession(){
+  selectedCustomer=null;
+  document.getElementById('s-phone').value='';
+  document.getElementById('s-customer-info').style.display='none';
   await loadAvailableMachines();
-  selectedCustomer = null;
-  document.getElementById('s-phone').value = '';
-  document.getElementById('s-customer-info').style.display = 'none';
   openModal('modal-session');
 }
 
-async function openSessionFromMachine(machineId, pricePerHour) {
-  sessionMachineId = machineId;
-  sessionMachinePrice = pricePerHour;
+async function openSessionFromMachine(machineId,pricePerHour){
+  selectedCustomer=null;
+  document.getElementById('s-phone').value='';
+  document.getElementById('s-customer-info').style.display='none';
   await loadAvailableMachines();
-  document.getElementById('s-machine').value = machineId + '|' + pricePerHour;
-  selectedCustomer = null;
-  document.getElementById('s-phone').value = '';
-  document.getElementById('s-customer-info').style.display = 'none';
+  document.getElementById('s-machine').value=machineId+'|'+pricePerHour;
   openModal('modal-session');
 }
 
-async function loadAvailableMachines() {
-  const machines = await http('machine','/machines');
-  document.getElementById('s-machine').innerHTML = machines
+async function loadAvailableMachines(){
+  const machines=await http('machine','/machines');
+  document.getElementById('s-machine').innerHTML=machines
     .filter(m=>m.status==='Available')
     .map(m=>`<option value="${m.id}|${m.pricePerHour}">${m.name} — ${fmt(m.pricePerHour)}/h</option>`)
-    .join('') || '<option disabled>Không có máy trống</option>';
+    .join('')||'<option disabled>Không có máy trống</option>';
 }
 
-async function startSession() {
-  if (!selectedCustomer) return toast('Tìm khách bằng SĐT trước','error');
-  const machineVal = document.getElementById('s-machine').value;
-  if (!machineVal) return toast('Chọn máy','error');
-  const [machineId, priceStr] = machineVal.split('|');
-  const pricePerHour = Number(priceStr);
-  try {
-    const wallet = await http('wallet', `/wallet/${selectedCustomer.id}`);
-    const discount = wallet.discount || 0;
-
-    // Bước 1: Start session trước (kiểm tra balance)
-    const session = await http('session', '/sessions/start', 'POST', { userId: selectedCustomer.id, machineId, pricePerHour, discount });
-
-    // Bước 2: Chỉ occupy machine khi session tạo thành công
-    await http('machine', `/machines/${machineId}/occupy`, 'POST', { userId: selectedCustomer.id, userPhone: selectedCustomer.phone });
-
+async function startSession(){
+  if(!selectedCustomer)return toast('Tìm khách bằng SĐT trước','error');
+  const machineVal=document.getElementById('s-machine').value;
+  if(!machineVal||machineVal.includes('disabled'))return toast('Không có máy trống','error');
+  const[machineId,priceStr]=machineVal.split('|');
+  const pricePerHour=Number(priceStr);
+  try{
+    const wallet=await http('wallet',`/wallet/${selectedCustomer.id}`);
+    const discount=wallet.discount||0;
+    const minBalance=Math.round(pricePerHour/60*(1-discount),0);
+    if(wallet.balance<=0)return toast('Tài khoản không có tiền','error');
+    if(wallet.balance<minBalance)return toast(`Cần ít nhất ${fmt(minBalance)} để bắt đầu (1 phút chơi)`,'error');
+    // Start session trước → nếu fail thì không occupy machine
+    await http('session','/sessions/start','POST',{userId:selectedCustomer.id,machineId,pricePerHour,discount});
+    // Sau đó occupy machine
+    await http('machine',`/machines/${machineId}/occupy`,'POST',{userId:selectedCustomer.id,userPhone:selectedCustomer.phone});
     toast(`Mở phiên cho ${selectedCustomer.fullName} thành công!`);
-    closeModal('modal-session');
-    loadMachines();
-  } catch(e) { toast('Lỗi: '+e.message,'error'); }
+    closeModal('modal-session');loadMachines();
+  }catch(e){toast('Lỗi: '+e.message,'error');}
+}
+
+// ── REPORTS (Admin only) ──
+async function loadReports(){
+  if(!isAdmin())return;
+  try{
+    // Lấy tất cả sessions để tính báo cáo
+    const allSessions=await http('session','/sessions/history');
+    const now=new Date();
+    const currentYear=now.getFullYear();
+    const currentMonth=now.getMonth();
+
+    // Tính doanh thu theo tháng trong năm
+    const monthlyRevenue=Array(12).fill(0);
+    const monthlySessions=Array(12).fill(0);
+
+    allSessions.forEach(s=>{
+      const d=new Date(s.startTime);
+      if(d.getFullYear()===currentYear){
+        monthlyRevenue[d.getMonth()]+=s.totalCost;
+        monthlySessions[d.getMonth()]++;
+      }
+    });
+
+    const monthRevenue=monthlyRevenue[currentMonth];
+    const yearRevenue=monthlyRevenue.reduce((a,b)=>a+b,0);
+    const monthSessions=monthlySessions[currentMonth];
+    const activeDays=monthlyRevenue.filter(r=>r>0).length||1;
+
+    document.getElementById('r-month').textContent=fmt(monthRevenue);
+    document.getElementById('r-year').textContent=fmt(yearRevenue);
+    document.getElementById('r-sessions').textContent=monthSessions;
+    document.getElementById('r-avg').textContent=fmt(Math.round(yearRevenue/activeDays));
+
+    const labels=['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
+
+    // Revenue chart
+    if(revenueChart)revenueChart.destroy();
+    revenueChart=new Chart(document.getElementById('revenue-chart'),{
+      type:'bar',
+      data:{
+        labels,
+        datasets:[{
+          label:'Doanh thu (đ)',
+          data:monthlyRevenue,
+          backgroundColor:monthlyRevenue.map((_,i)=>i===currentMonth?'rgba(79,142,255,.8)':'rgba(79,142,255,.3)'),
+          borderColor:monthlyRevenue.map((_,i)=>i===currentMonth?'#4f8eff':'rgba(79,142,255,.5)'),
+          borderWidth:1,borderRadius:6,
+        }]
+      },
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{
+        x:{ticks:{color:'#64748b'},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#64748b',callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:'rgba(255,255,255,.05)'}}
+      }}
+    });
+
+    // Sessions chart
+    if(sessionsChart)sessionsChart.destroy();
+    sessionsChart=new Chart(document.getElementById('sessions-chart'),{
+      type:'line',
+      data:{
+        labels,
+        datasets:[{
+          label:'Số phiên',
+          data:monthlySessions,
+          borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,.1)',
+          borderWidth:2,pointBackgroundColor:'#22c55e',tension:.3,fill:true,
+        }]
+      },
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{
+        x:{ticks:{color:'#64748b'},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#64748b'},grid:{color:'rgba(255,255,255,.05)'}}
+      }}
+    });
+  }catch(e){toast('Lỗi tải báo cáo','error');}
 }
 
 // ── FOOD ──
-async function loadFood() {
-  try {
-    const items = await http('food','/food/menu');
-    const catIcon = {Food:'🍜',Drink:'🧃',Snack:'🍿'};
-    document.getElementById('food-grid').innerHTML = items.length
-      ? items.map(i=>`<div class="food-card">
-          <div><div class="name">${catIcon[i.category]||'🍽️'} ${i.name}</div><div class="cat">${i.category} · ${i.isAvailable?'<span style="color:var(--green)">Còn hàng</span>':'<span style="color:var(--red)">Hết</span>'}</div></div>
-          <div class="food-price">${fmt(i.price)}</div>
-        </div>`).join('')
-      : `<div class="empty-state"><div class="icon">🍜</div><p>Menu trống</p></div>`;
-  } catch(e) { toast('Không kết nối FoodService','error'); }
+async function loadFood(){
+  try{
+    const items=await http('food','/food/menu');
+    const catIcon={Food:'🍜',Drink:'🧃',Snack:'🍿'};
+    document.getElementById('food-grid').innerHTML=items.length
+      ?items.map(i=>`<div class="food-card"><div><div class="name">${catIcon[i.category]||'🍽️'} ${i.name}</div><div class="cat">${i.category} · ${i.isAvailable?'<span style="color:var(--green)">Còn hàng</span>':'<span style="color:var(--red)">Hết</span>'}</div></div><div class="food-price">${fmt(i.price)}</div></div>`).join('')
+      :`<div class="empty-state"><div class="icon">🍜</div><p>Menu trống</p></div>`;
+  }catch(e){toast('Không kết nối FoodService','error');}
 }
 
-async function addFood() {
+async function addFood(){
   const name=document.getElementById('f-name').value.trim();
   const category=document.getElementById('f-cat').value;
   const price=Number(document.getElementById('f-price').value);
-  if (!name||!price) return toast('Nhập đủ thông tin','error');
-  try { await http('food','/food/menu','POST',{name,category,price}); toast('Thêm món thành công!'); closeModal('modal-food'); loadFood(); }
-  catch(e) { toast('Lỗi: '+e.message,'error'); }
+  if(!name||!price)return toast('Nhập đủ thông tin','error');
+  try{await http('food','/food/menu','POST',{name,category,price});toast('Thêm món thành công!');closeModal('modal-food');loadFood();}
+  catch(e){toast('Lỗi: '+e.message,'error');}
 }
 
-// Enter để login
-document.getElementById('login-password').addEventListener('keydown', e => { if(e.key==='Enter') login(); });
-document.getElementById('s-phone').addEventListener('keydown', e => { if(e.key==='Enter') lookupByPhone(); });
+document.getElementById('login-password').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+document.getElementById('s-phone')?.addEventListener('keydown',e=>{if(e.key==='Enter')lookupByPhone();});
 
-if (token && currentUser) showApp();
-else document.getElementById('login-page').style.display = 'flex';
+if(token&&currentUser&&currentUser.role!=='Customer')showApp();
+else{document.getElementById('login-page').style.display='flex';}
 </script>
 </body>
 </html>
