@@ -19,6 +19,9 @@ public class JwtService : IJwtService
 
     public JwtService(IConfiguration config) => _config = config;
 
+    private static readonly TimeZoneInfo VnZone =
+        TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+
     public string GenerateAccessToken(Guid userId, string username, string role)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
@@ -32,6 +35,7 @@ public class JwtService : IJwtService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
+        // JWT expires dùng UTC - chuẩn JWT spec
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],

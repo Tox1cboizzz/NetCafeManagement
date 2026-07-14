@@ -2,6 +2,13 @@ using SharedKernel.BaseEntities;
 
 namespace MachineService.Domain.Entities;
 
+file static class VnTime
+{
+    private static readonly TimeZoneInfo VnZone =
+        TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+    public static DateTime Now => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VnZone);
+}
+
 public class Machine : BaseEntity
 {
     public string Name { get; private set; } = null!;
@@ -22,7 +29,7 @@ public class Machine : BaseEntity
     {
         CurrentUserId = userId;
         CurrentUserPhone = userPhone;
-        SessionStartTime = DateTime.UtcNow;
+        SessionStartTime = VnTime.Now;
         Status = MachineStatus.InUse;
         SetUpdated();
     }

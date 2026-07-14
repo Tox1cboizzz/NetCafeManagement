@@ -2,6 +2,14 @@ using SharedKernel.BaseEntities;
 
 namespace SessionService.Domain.Entities;
 
+file static class VnTime
+{
+    private static readonly TimeZoneInfo VnZone = 
+        TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+    
+    public static DateTime Now => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VnZone);
+}
+
 public class Session : BaseEntity
 {
     public Guid UserId { get; private set; }
@@ -20,7 +28,7 @@ public class Session : BaseEntity
         {
             UserId = userId,
             MachineId = machineId,
-            StartTime = DateTime.UtcNow,
+            StartTime = VnTime.Now,
             PricePerHour = pricePerHour,
             Discount = discount,
             TotalCost = 0,
@@ -43,7 +51,7 @@ public class Session : BaseEntity
     /// </summary>
     public void Close()
     {
-        EndTime = DateTime.UtcNow;
+        EndTime = VnTime.Now;
         Status = SessionStatus.Closed;
         SetUpdated();
     }
